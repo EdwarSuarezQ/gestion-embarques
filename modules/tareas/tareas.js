@@ -1,4 +1,3 @@
-// Variables globales
 let tareas = [];
 let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
 

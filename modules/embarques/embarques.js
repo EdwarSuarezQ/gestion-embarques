@@ -1,4 +1,3 @@
-// Variables globales
 let embarques = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
