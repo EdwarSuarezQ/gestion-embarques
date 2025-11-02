@@ -1,80 +1,62 @@
-
-
-  
-  
-    <div class="mb-6 flex justify-end">
-      <button
-        id="btn-nueva-ruta"
-        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-      >
-        <i class="fas fa-plus mr-2"></i> Nueva Ruta
-      </button>
-    </div>
-    <div class="max-w-7xl mx-auto px-6 py-6">
-      <h1 class="text-2xl font-bold mb-6">Gestion de Rutas Maritimas</h1>
-      <div id="module-content"></div>
-    </div>
-
-    <!-- Modal -->
-    <div
-      id="modal"
-      class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-    >
-      <div
-        class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col"
-      >
-        <!-- Encabezado azul -->
-        <div
-          class="flex justify-between items-center bg-blue-600 text-white px-4 py-2 rounded-t-lg"
-        >
-          <h3 id="modal-title" class="text-base font-semibold"></h3>
-          <button
-            id="modal-close"
-            class="text-white hover:text-gray-200 text-xl"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div
-          id="modal-body"
-          class="p-4 space-y-3 text-sm overflow-y-auto flex-1"
-        ></div>
-
-        <!-- Footer -->
-        <div class="flex justify-end gap-2 px-4 py-3 bg-gray-50 rounded-b-lg">
-          <button
-            id="modal-cancel"
-            class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm"
-          >
-            Cancelar
-          </button>
-          <button
-            id="modal-save"
-            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center"
-          >
-            <i class="fas fa-save mr-1"></i> Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      id="toast"
-      class="hidden fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50"
-    >
-      <div class="flex items-center">
-        <span id="toast-message"></span>
-        <button id="toast-close" class="ml-4">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    
-
-   <!-- Script del módulo -->
-   <script src="./rutas.js"></script>
+<div class="mb-6 flex justify-end">
+  <button
+    id="btn-nueva-ruta"
+    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+  >
+    <i class="fas fa-plus mr-2"></i> Nueva Ruta
+  </button>
+</div>
+<div class="max-w-7xl mx-auto px-6 py-6">
+  <h1 class="text-2xl font-bold mb-6">Gestion de Rutas Maritimas</h1>
+  <div id="module-content"></div>
 </div>
 
-    
-  
+<div
+  id="modal"
+  class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+>
+  <div
+    class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col"
+  >
+    <div
+      class="flex justify-between items-center bg-blue-600 text-white px-4 py-2 rounded-t-lg"
+    >
+      <h3 id="modal-title" class="text-base font-semibold"></h3>
+      <button id="modal-close" class="text-white hover:text-gray-200 text-xl">
+        &times;
+      </button>
+    </div>
 
+    <div
+      id="modal-body"
+      class="p-4 space-y-3 text-sm overflow-y-auto flex-1"
+    ></div>
+
+    <div class="flex justify-end gap-2 px-4 py-3 bg-gray-50 rounded-b-lg">
+      <button
+        id="modal-cancel"
+        class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm"
+      >
+        Cancelar
+      </button>
+      <button
+        id="modal-save"
+        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center"
+      >
+        <i class="fas fa-save mr-1"></i> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div
+  id="toast"
+  class="hidden fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50"
+>
+  <div class="flex items-center">
+    <span id="toast-message"></span>
+    <button id="toast-close" class="ml-4">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>
