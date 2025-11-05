@@ -1,13 +1,8 @@
-// assets/JS/utils/gestorEventos.js
 import { cargarModulo } from "../modules/gestorModulos.js";
 import { toggleSidebar } from "./ui.js";
 import { appState, log } from "./state.js";
 
-/**
- * Configura todos los listeners globales (delegación).
- */
 export function configurarEventosGlobales() {
-  // Delegación de clicks en elementos con data-module
   document.body.addEventListener("click", async (e) => {
     const link = e.target.closest("[data-module]");
     if (!link) return;
@@ -24,14 +19,14 @@ export function configurarEventosGlobales() {
     await cargarModulo(moduleName, { forceReload: true });
   });
 
-  // Toggle sidebar
+  //Toggle sidebar
   document.addEventListener("click", (e) => {
     if (e.target.closest("#sidebar-toggle")) {
       toggleSidebar();
     }
   });
 
-  // Cerrar sidebar al hacer clic fuera en móvil
+  //Cerrar sidebar al hacer clic fuera en móvil
   document.addEventListener("click", (e) => {
     if (window.innerWidth < 768 && appState.sidebarAbierto) {
       const sidebar = document.getElementById("sidebar");
@@ -46,7 +41,6 @@ export function configurarEventosGlobales() {
     }
   });
 
-  // Responsive: ajustar estado cuando cambian tamaños
   window.addEventListener("resize", () => {
     if (window.innerWidth >= 768) {
       toggleSidebar(true);
@@ -55,7 +49,6 @@ export function configurarEventosGlobales() {
     }
   });
 
-  // Dropdown de perfil (delegación simple)
   document.addEventListener("click", (e) => {
     const dropdownBtn = e.target.closest("#profile-dropdown-btn");
     const dropdown = document.getElementById("profile-dropdown");
