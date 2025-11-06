@@ -12,72 +12,97 @@ body {
 
 /* ========== SIDEBAR ========== */
 .sidebar {
-  width: 16rem; /* w-64 */
-  min-height: 100%; /* Ocupa todo el alto disponible */
-  transition: width 0.3s ease;
-  padding-top: 24px; /* separa del navbar */
-  padding-bottom: 16px; /* espacio inferior opcional */
-  overflow-x: hidden; /* evita scroll horizontal */
+  width: 16rem;
+  min-height: 100%;
+  transition: width 0.3s ease-in-out;
+  padding-top: 24px;
+  padding-bottom: 16px;
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {
-  width: 5rem;
+  width: 4rem;
 }
 
-/* Ajuste de los links cuando se colapsa */
-.sidebar.collapsed .module-link {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+.sidebar-text-container {
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-/* Ocultar textos y títulos en colapsado */
-/* Transiciones suaves para textos y títulos del sidebar */
+.sidebar.collapsed .sidebar-text-container {
+  width: 0;
+  opacity: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .sidebar-text,
 .sidebar-title {
-  transition: opacity 0.3s, width 0.3s, padding 0.3s;
+  transition: opacity 0.2s ease-in-out 0.1s;
+  white-space: nowrap;
 }
 
 .sidebar.collapsed .sidebar-text,
 .sidebar.collapsed .sidebar-title {
   opacity: 0;
-  width: 0;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+}
+
+.module-link {
+  transition: all 0.2s ease-in-out;
+  position: relative;
   overflow: hidden;
+}
+
+.sidebar.collapsed .module-link {
+  justify-content: center;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.module-link::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
   white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 50;
+  margin-left: 0.5rem;
 }
 
-#sidebar.w-16 .sidebar-text {
-  display: none;
+.sidebar.collapsed .module-link:hover::after {
+  opacity: 1;
 }
 
-/* Íconos siempre visibles */
-.module-link i {
-  font-size: 1.2rem;
-  min-width: 1.5rem;
-  text-align: center;
+.module-link.active {
+  box-shadow: inset 3px 0 0 #3b82f6;
+  background-color: #1e40af;
 }
 
-.hidden {
-  display: none;
+.sidebar.collapsed .module-link.active {
+  box-shadow: inset 3px 0 0 #3b82f6;
+  background-color: #1e40af;
 }
 
 /* ========== CONTENIDO PRINCIPAL ========== */
 .content-area {
-  flex: 1; /* el contenido ocupa todo el espacio restante */
+  flex: 1;
   transition: all 0.3s ease;
-  min-width: 0; /* evita que el contenido se desplace al colapsar */
+  min-width: 0;
 }
 
 /* ========== FOOTER ========== */
 footer {
-  margin-top: 0; /* Pegado al contenido/sidebar */
-}
-
-/* ========== MAPA ========== */
-.map-container {
-  height: 400px;
+  margin-top: 0;
 }
 
 /* ========== NOTIFICACIONES Y ESTADOS ========== */
@@ -149,34 +174,21 @@ footer {
 }
 
 .toast-exito {
-  background: #22c55e; /* Verde Tailwind */
+  background: #22c55e;
 }
 
 .toast-error {
-  background: #ef4444; /* Rojo Tailwind */
+  background: #ef4444;
 }
 
 .toast-info {
-  background: #3b82f6; /* Azul Tailwind */
+  background: #3b82f6;
 }
 
 .toast-icon {
   display: flex;
   align-items: center;
   font-size: 1.2rem;
-}
-
-/* Tema oscuro opcional */
-@media (prefers-color-scheme: dark) {
-  .toast-exito {
-    background: #16a34a;
-  }
-  .toast-error {
-    background: #dc2626;
-  }
-  .toast-info {
-    background: #2563eb;
-  }
 }
 
 /* ========== MODAL ========== */
