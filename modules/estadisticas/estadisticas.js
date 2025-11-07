@@ -493,5 +493,3 @@ document.addEventListener("DOMContentLoaded", function () {
   const toastClose = document.getElementById("toast-close");
   if (toastClose) toastClose.addEventListener("click", ocultarToast);
 });
-
-// La inicialización se maneja automáticamente arriba

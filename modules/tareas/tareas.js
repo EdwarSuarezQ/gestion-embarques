@@ -883,5 +883,3 @@ function ocultarToast() {
     toast.classList.add("hidden");
   }
 }
-
-// La inicialización se maneja automáticamente arriba
