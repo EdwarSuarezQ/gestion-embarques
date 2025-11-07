@@ -28,7 +28,7 @@ Proyecto para gestionar operaciones portuarias (tareas, embarques, embarcaciones
 
 - **HTML5** : estructura principal del proyecto.
 
-- **CSS3** + Tailwind CSS (vía CDN): diseño responsivo, limpio y moderno con utilidades predefinidas.
+- **CSS3 + Tailwind CSS:** diseño responsivo, limpio y moderno con utilidades predefinidas.
 
 - **JavaScript**: manejo de la lógica de negocio, eventos, y comunicación entre módulos.
 
