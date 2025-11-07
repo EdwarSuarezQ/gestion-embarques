@@ -652,5 +652,3 @@ document.addEventListener("DOMContentLoaded", function () {
     toastClose.addEventListener("click", ocultarToast);
   }
 });
-
-// La inicialización se maneja automáticamente arriba

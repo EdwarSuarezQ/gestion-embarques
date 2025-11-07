@@ -864,8 +864,6 @@ function eliminarRuta(id) {
 }
 
 function guardarRutas() {
-  // Los datos se mantienen en el arreglo rutas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
   console.log("Rutas guardadas en memoria:", rutas.length, "elementos");
 }
 
@@ -899,5 +897,3 @@ function ocultarToast() {
     toast.classList.add("hidden");
   }
 }
-
-// La inicialización se maneja automáticamente arriba
