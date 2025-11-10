@@ -1,27 +1,48 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let tareas = [];
-let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
 
-// Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarTareas();
+// Inicialización del módulo
+async function inicializarModulo() {
+  console.log('Inicializando módulo: tareas');
   configurarEventosGlobales();
+  await cargarTareas();
 }
 
-// Auto-inicialización cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", inicializarModulo);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarModulo);
 } else {
-  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
+}
+let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
+
+// Función para cargar tareas desde la API
+async function cargarTareas() {
+  try {
+    const res = await api.get('/tareas');
+    const payload = res && res.data ? res.data : res;
+    // Si la respuesta trae paginación (items) o una lista directa
+    if (payload && Array.isArray(payload.items)) {
+      tareas = payload.items.map(mapServerTarea);
+    } else if (Array.isArray(payload)) {
+      tareas = payload.map(mapServerTarea);
+    } else if (payload && typeof payload === 'object' && payload !== null) {
+      // Single object -> envolver en array
+      tareas = [mapServerTarea(payload)];
+    } else {
+      tareas = [];
+    }
+    renderizarTareas();
+  } catch (error) {
+    console.error('Error al cargar tareas:', error);
+  }
 }
 
 function renderizarTareas() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -37,16 +58,16 @@ function renderizarTareas() {
 }
 
 function crearEstructuraCompleta() {
-  const tareasPendientes = tareas.filter((t) => t.estado === "pending").length;
+  const tareasPendientes = tareas.filter((t) => t.estado === 'pending').length;
   const tareasCompletadas = tareas.filter(
-    (t) => t.estado === "completed"
+    (t) => t.estado === 'completed',
   ).length;
   const eficiencia =
     tareas.length > 0
       ? Math.round((tareasCompletadas / tareas.length) * 100)
       : 0;
   const tareasAltaPrioridad = tareas.filter(
-    (t) => t.prioridad === "high"
+    (t) => t.prioridad === 'high',
   ).length;
 
   // Calcular porcentajes con protección contra división por cero
@@ -63,7 +84,7 @@ function crearEstructuraCompleta() {
   const diferencia = eficiencia - eficienciaSemanaPasada;
 
   return `
-    <div class="tareas-module">    
+    <div class="tareas-module">
         <!-- Estadísticas -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-blue-500">
@@ -198,9 +219,9 @@ function crearEstructuraCompleta() {
 }
 
 function renderizarTablaTareas() {
-  const tableBody = document.getElementById("tareas-table-body");
+  const tableBody = document.getElementById('tareas-table-body');
   if (!tableBody) {
-    console.error("No se encontró el table body para tareas");
+    console.error('No se encontró el table body para tareas');
     return;
   }
 
@@ -210,22 +231,22 @@ function renderizarTablaTareas() {
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                      tarea.titulo
+                      tarea.titulo,
                     )}</div>
                     <div class="text-sm text-gray-500">${escapeHtml(
-                      tarea.descripcion
+                      tarea.descripcion,
                     )}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="h-8 w-8 rounded-full ${getColorIniciales(
-                          tarea.asignado
+                          tarea.asignado,
                         )} flex items-center justify-center text-white font-medium text-sm">
                             ${getIniciales(tarea.asignado)}
                         </div>
                         <div class="ml-3">
                             <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                              tarea.asignado
+                              tarea.asignado,
                             )}</div>
                             <div class="text-sm text-gray-500">${
                               tarea.departamento
@@ -236,7 +257,7 @@ function renderizarTablaTareas() {
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">${tarea.fecha}</div>
                     <div class="text-xs text-gray-500">${calcularDiasRestantes(
-                      tarea.fecha
+                      tarea.fecha,
                     )}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -265,9 +286,9 @@ function renderizarTablaTareas() {
                     </button>
                 </td>
             </tr>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarEstadisticas() {
@@ -276,24 +297,24 @@ function actualizarEstadisticas() {
 }
 
 function actualizarEstadisticasEstado() {
-  const container = document.getElementById("estadisticas-estado");
+  const container = document.getElementById('estadisticas-estado');
   if (!container) return;
 
   const estados = {
-    "in-progress": {
-      nombre: "En progreso",
-      color: "blue",
-      cantidad: tareas.filter((t) => t.estado === "in-progress").length,
+    'in-progress': {
+      nombre: 'En progreso',
+      color: 'blue',
+      cantidad: tareas.filter((t) => t.estado === 'in-progress').length,
     },
     completed: {
-      nombre: "Completadas",
-      color: "green",
-      cantidad: tareas.filter((t) => t.estado === "completed").length,
+      nombre: 'Completadas',
+      color: 'green',
+      cantidad: tareas.filter((t) => t.estado === 'completed').length,
     },
     pending: {
-      nombre: "Pendientes",
-      color: "yellow",
-      cantidad: tareas.filter((t) => t.estado === "pending").length,
+      nombre: 'Pendientes',
+      color: 'yellow',
+      cantidad: tareas.filter((t) => t.estado === 'pending').length,
     },
   };
 
@@ -320,17 +341,17 @@ function actualizarEstadisticasEstado() {
       }%"></div>
                 </div>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarProximasTareas() {
-  const container = document.getElementById("proximas-tareas");
+  const container = document.getElementById('proximas-tareas');
   if (!container) return;
 
   const proximas = tareas
-    .filter((t) => t.estado === "pending" || t.estado === "in-progress")
+    .filter((t) => t.estado === 'pending' || t.estado === 'in-progress')
     .slice(0, 4);
 
   container.innerHTML = proximas
@@ -338,13 +359,13 @@ function actualizarProximasTareas() {
       (tarea) => `
             <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
                 <div class="h-10 w-10 rounded-full ${getColorPrioridad(
-                  tarea.prioridad
+                  tarea.prioridad,
                 )} flex items-center justify-center text-white mr-3">
                     <i class="fas fa-tasks"></i>
                 </div>
                 <div class="flex-1">
                     <h3 class="text-sm font-medium">${escapeHtml(
-                      tarea.titulo
+                      tarea.titulo,
                     )}</h3>
                     <p class="text-xs text-gray-500">${tarea.fecha} - ${
         tarea.asignado
@@ -354,28 +375,28 @@ function actualizarProximasTareas() {
                   tarea.estado
                 } border">${getEstadoText(tarea.estado)}</span>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventosGlobales() {
   // Configurar eventos del modal
-  const modal = document.getElementById("modal");
-  const modalClose = document.getElementById("modal-close");
-  const modalCancel = document.getElementById("modal-cancel");
+  const modal = document.getElementById('modal');
+  const modalClose = document.getElementById('modal-close');
+  const modalCancel = document.getElementById('modal-cancel');
 
   if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
+    modalClose.addEventListener('click', ocultarModal);
   }
 
   if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
+    modalCancel.addEventListener('click', ocultarModal);
   }
 
   // Cerrar modal al hacer clic fuera
   if (modal) {
-    modal.addEventListener("click", function (e) {
+    modal.addEventListener('click', function (e) {
       if (e.target === modal) {
         ocultarModal();
       }
@@ -383,16 +404,16 @@ function configurarEventosGlobales() {
   }
 
   // Configurar toast
-  const toastClose = document.getElementById("toast-close");
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 
   // Usar event delegation para el botón de nueva tarea
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-nueva-tarea" ||
-      e.target.closest("#btn-nueva-tarea")
+      e.target.id === 'btn-nueva-tarea' ||
+      e.target.closest('#btn-nueva-tarea')
     ) {
       mostrarModalCrear();
     }
@@ -400,47 +421,47 @@ function configurarEventosGlobales() {
 }
 
 function configurarEventosTabla() {
-  const tableBody = document.getElementById("tareas-table-body");
+  const tableBody = document.getElementById('tareas-table-body');
   if (!tableBody) return;
 
   // Usar event delegation para los botones de editar y eliminar
-  tableBody.addEventListener("click", (e) => {
+  tableBody.addEventListener('click', (e) => {
     const target = e.target;
-    const editBtn = target.closest(".edit-btn");
-    const deleteBtn = target.closest(".delete-btn");
+    const editBtn = target.closest('.edit-btn');
+    const deleteBtn = target.closest('.delete-btn');
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarTarea(id);
     }
   });
 
   // Configurar filtros
-  const filtroEstado = document.getElementById("filtro-estado");
-  const filtroPrioridad = document.getElementById("filtro-prioridad");
-  const buscarTareas = document.getElementById("buscar-tareas");
+  const filtroEstado = document.getElementById('filtro-estado');
+  const filtroPrioridad = document.getElementById('filtro-prioridad');
+  const buscarTareas = document.getElementById('buscar-tareas');
 
   if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
   }
   if (filtroPrioridad) {
-    filtroPrioridad.addEventListener("change", aplicarFiltros);
+    filtroPrioridad.addEventListener('change', aplicarFiltros);
   }
   if (buscarTareas) {
-    buscarTareas.addEventListener("input", aplicarFiltros);
+    buscarTareas.addEventListener('input', aplicarFiltros);
   }
 }
 
 function aplicarFiltros() {
-  const filtroEstado = document.getElementById("filtro-estado")?.value;
-  const filtroPrioridad = document.getElementById("filtro-prioridad")?.value;
+  const filtroEstado = document.getElementById('filtro-estado')?.value;
+  const filtroPrioridad = document.getElementById('filtro-prioridad')?.value;
   const textoBusqueda = document
-    .getElementById("buscar-tareas")
+    .getElementById('buscar-tareas')
     ?.value.toLowerCase();
 
   let tareasFiltradas = tareas;
@@ -451,7 +472,7 @@ function aplicarFiltros() {
 
   if (filtroPrioridad) {
     tareasFiltradas = tareasFiltradas.filter(
-      (t) => t.prioridad === filtroPrioridad
+      (t) => t.prioridad === filtroPrioridad,
     );
   }
 
@@ -461,7 +482,7 @@ function aplicarFiltros() {
         t.titulo.toLowerCase().includes(textoBusqueda) ||
         t.descripcion.toLowerCase().includes(textoBusqueda) ||
         t.asignado.toLowerCase().includes(textoBusqueda) ||
-        t.departamento.toLowerCase().includes(textoBusqueda)
+        t.departamento.toLowerCase().includes(textoBusqueda),
     );
   }
 
@@ -469,12 +490,12 @@ function aplicarFiltros() {
 }
 
 function renderizarTablaFiltrada(tareasFiltradas) {
-  const tableBody = document.getElementById("tareas-table-body");
+  const tableBody = document.getElementById('tareas-table-body');
   if (!tableBody) return;
 
   tableBody.innerHTML = tareasFiltradas
     .map((tarea) => renderFilaTarea(tarea))
-    .join("");
+    .join('');
 }
 
 function renderFilaTarea(tarea) {
@@ -482,22 +503,22 @@ function renderFilaTarea(tarea) {
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                  tarea.titulo
+                  tarea.titulo,
                 )}</div>
                 <div class="text-sm text-gray-500">${escapeHtml(
-                  tarea.descripcion
+                  tarea.descripcion,
                 )}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     <div class="h-8 w-8 rounded-full ${getColorIniciales(
-                      tarea.asignado
+                      tarea.asignado,
                     )} flex items-center justify-center text-white font-medium text-sm">
                         ${getIniciales(tarea.asignado)}
                     </div>
                     <div class="ml-3">
                         <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                          tarea.asignado
+                          tarea.asignado,
                         )}</div>
                         <div class="text-sm text-gray-500">${
                           tarea.departamento
@@ -508,7 +529,7 @@ function renderFilaTarea(tarea) {
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">${tarea.fecha}</div>
                 <div class="text-xs text-gray-500">${calcularDiasRestantes(
-                  tarea.fecha
+                  tarea.fecha,
                 )}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -543,14 +564,14 @@ function renderFilaTarea(tarea) {
 // Funciones auxiliares
 function calcularDiasRestantes(fecha) {
   const hoy = new Date();
-  const fechaLimite = new Date(fecha.split("/").reverse().join("-"));
+  const fechaLimite = new Date(fecha.split('/').reverse().join('-'));
   const diffTime = fechaLimite - hoy;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Hoy";
-  if (diffDays === 1) return "Mañana";
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Mañana';
   if (diffDays > 1) return `En ${diffDays} días`;
-  if (diffDays === -1) return "Ayer";
+  if (diffDays === -1) return 'Ayer';
   return `Hace ${Math.abs(diffDays)} días`;
 }
 
@@ -569,75 +590,75 @@ function getBadgePrioridad(prioridad) {
 
 function getColorPrioridad(prioridad) {
   const colores = {
-    high: "bg-red-500",
-    medium: "bg-yellow-500",
-    low: "bg-green-500",
+    high: 'bg-red-500',
+    medium: 'bg-yellow-500',
+    low: 'bg-green-500',
   };
-  return colores[prioridad] || "bg-gray-500";
+  return colores[prioridad] || 'bg-gray-500';
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
+  if (!text) return '';
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 function getColorIniciales(nombre) {
   const colores = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-yellow-500",
-    "bg-purple-500",
-    "bg-red-500",
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-yellow-500',
+    'bg-purple-500',
+    'bg-red-500',
   ];
   const index = nombre.charCodeAt(0) % colores.length;
   return colores[index];
 }
 
 function getIniciales(nombre) {
-  if (!nombre) return "??";
+  if (!nombre) return '??';
   return nombre
-    .split(" ")
+    .split(' ')
     .map((n) => n[0])
-    .join("")
+    .join('')
     .toUpperCase();
 }
 
 function getEstadoText(estado) {
   const estados = {
-    pending: "Pendiente",
-    "in-progress": "En progreso",
-    completed: "Completado",
+    pending: 'Pendiente',
+    'in-progress': 'En progreso',
+    completed: 'Completado',
   };
   return estados[estado] || estado;
 }
 
 // Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
-  const modalTitle = document.getElementById("modal-title");
-  const modalBody = document.getElementById("modal-body");
-  const modalSave = document.getElementById("modal-save");
-  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalSave = document.getElementById('modal-save');
+  const modal = document.getElementById('modal');
 
   if (!modal || !modalTitle || !modalBody || !modalSave) {
-    console.error("Elementos del modal no encontrados");
+    console.error('Elementos del modal no encontrados');
     return;
   }
 
   modalTitle.textContent = titulo;
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
-  modal.classList.remove("hidden");
+  modal.classList.remove('hidden');
 
   // ELIMINAR esta línea:
   // setTimeout(inicializarFlatpickrEnModal, 100);
 }
 
 function ocultarModal() {
-  const modal = document.getElementById("modal");
+  const modal = document.getElementById('modal');
   if (modal) {
-    modal.classList.add("hidden");
+    modal.classList.add('hidden');
   }
 }
 
@@ -663,10 +684,10 @@ function mostrarModalCrear() {
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-    <input 
-        type="date" 
-        id="create-fecha" 
-        class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+    <input
+        type="date"
+        id="create-fecha"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md"
         required>
                 <div class="text-xs text-gray-500 mt-1">Haz clic para seleccionar una fecha</div>
             </div>
@@ -691,11 +712,11 @@ function mostrarModalCrear() {
         </div>
     `;
 
-  mostrarModal("Nueva Tarea", campos, crearTarea);
+  mostrarModal('Nueva Tarea', campos, crearTarea);
 }
 
 function mostrarModalEditar(id) {
-  const tarea = tareas.find((t) => t.id === id);
+  const tarea = tareas.find((t) => t.id === id || t._id === id);
   if (!tarea) return;
 
   const campos = `
@@ -704,34 +725,34 @@ function mostrarModalEditar(id) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Título *</label>
                 <input type="text" id="edit-titulo" value="${escapeHtml(
-                  tarea.titulo
+                  tarea.titulo,
                 )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                 <textarea id="edit-descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3">${escapeHtml(
-                  tarea.descripcion
+                  tarea.descripcion,
                 )}</textarea>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Asignado a *</label>
                 <select id="edit-asignado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     <option value="Carlos Martínez" ${
-                      tarea.asignado === "Carlos Martínez" ? "selected" : ""
+                      tarea.asignado === 'Carlos Martínez' ? 'selected' : ''
                     }>Carlos Martínez</option>
                     <option value="María López" ${
-                      tarea.asignado === "María López" ? "selected" : ""
+                      tarea.asignado === 'María López' ? 'selected' : ''
                     }>María López</option>
                     <option value="Juan Pérez" ${
-                      tarea.asignado === "Juan Pérez" ? "selected" : ""
+                      tarea.asignado === 'Juan Pérez' ? 'selected' : ''
                     }>Juan Pérez</option>
                 </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-              <input type="date" id="edit-fecha" 
-              value="${tarea.fecha.split("/").reverse().join("-")}"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+              <input type="date" id="edit-fecha"
+              value="${tarea.fecha.split('/').reverse().join('-')}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
               required>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -739,13 +760,13 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
                     <select id="edit-prioridad" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="low" ${
-                          tarea.prioridad === "low" ? "selected" : ""
+                          tarea.prioridad === 'low' ? 'selected' : ''
                         }>Baja</option>
                         <option value="medium" ${
-                          tarea.prioridad === "medium" ? "selected" : ""
+                          tarea.prioridad === 'medium' ? 'selected' : ''
                         }>Media</option>
                         <option value="high" ${
-                          tarea.prioridad === "high" ? "selected" : ""
+                          tarea.prioridad === 'high' ? 'selected' : ''
                         }>Alta</option>
                     </select>
                 </div>
@@ -753,13 +774,13 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                     <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="pending" ${
-                          tarea.estado === "pending" ? "selected" : ""
+                          tarea.estado === 'pending' ? 'selected' : ''
                         }>Pendiente</option>
                         <option value="in-progress" ${
-                          tarea.estado === "in-progress" ? "selected" : ""
+                          tarea.estado === 'in-progress' ? 'selected' : ''
                         }>En Progreso</option>
                         <option value="completed" ${
-                          tarea.estado === "completed" ? "selected" : ""
+                          tarea.estado === 'completed' ? 'selected' : ''
                         }>Completado</option>
                     </select>
                 </div>
@@ -767,119 +788,156 @@ function mostrarModalEditar(id) {
         </div>
     `;
 
-  mostrarModal("Editar Tarea", campos, editarTarea);
+  mostrarModal('Editar Tarea', campos, editarTarea);
 }
 
 function crearTarea() {
-  const titulo = document.getElementById("create-titulo")?.value.trim();
-  const asignado = document.getElementById("create-asignado")?.value;
-  const fechaInput = document.getElementById("create-fecha")?.value; // yyyy-mm-dd
+  const titulo = document.getElementById('create-titulo')?.value.trim();
+  const asignado = document.getElementById('create-asignado')?.value;
+  const fechaInput = document.getElementById('create-fecha')?.value; // yyyy-mm-dd
 
   if (!titulo || !asignado || !fechaInput) {
-    mostrarToast("Por favor complete todos los campos obligatorios", "error");
+    mostrarToast('Por favor complete todos los campos obligatorios', 'error');
     return;
   }
 
   // CONVERTIR de yyyy-mm-dd a dd/mm/yyyy
-  const fechaParts = fechaInput.split("-");
+  const fechaParts = fechaInput.split('-');
   const fecha = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
 
-  const nuevaTarea = {
-    id: Date.now(),
+  const body = {
     titulo: titulo,
     descripcion:
-      document.getElementById("create-descripcion")?.value.trim() || "",
+      document.getElementById('create-descripcion')?.value.trim() || '',
     asignado: asignado,
-    fecha: fecha, // ← Usar la fecha convertida
-    prioridad: document.getElementById("create-prioridad")?.value || "medium",
-    estado: document.getElementById("create-estado")?.value || "pending",
+    fecha: fecha, // formato dd/mm/yyyy
+    prioridad: document.getElementById('create-prioridad')?.value || 'medium',
+    estado: document.getElementById('create-estado')?.value || 'pending',
     departamento: asignarDepartamento(asignado),
   };
 
-  tareas.push(nuevaTarea);
-  guardarTareas();
-  renderizarTareas();
-  ocultarModal();
-  mostrarToast("¡Tarea creada con éxito!");
+  // Llamada a la API
+  api
+    .post('/tareas', body)
+    .then((res) => {
+      const created = res && res.data ? res.data : res;
+      tareas.unshift(mapServerTarea(created));
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast('¡Tarea creada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error creando tarea', err);
+      mostrarToast(err.message || 'Error al crear tarea', 'error');
+    });
 }
 
 function editarTarea() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const tareaIndex = tareas.findIndex((t) => t.id === id);
+  const id = document.getElementById('edit-id')?.value;
+  if (!id) return;
 
-  if (tareaIndex !== -1) {
-    tareas[tareaIndex] = {
-      ...tareas[tareaIndex],
-      titulo: document.getElementById("edit-titulo")?.value.trim() || "",
-      descripcion:
-        document.getElementById("edit-descripcion")?.value.trim() || "",
-      asignado: document.getElementById("edit-asignado")?.value || "",
-      fecha: document.getElementById("edit-fecha")?.value || "",
-      prioridad: document.getElementById("edit-prioridad")?.value || "medium",
-      estado: document.getElementById("edit-estado")?.value || "pending",
-      departamento: asignarDepartamento(
-        document.getElementById("edit-asignado")?.value
-      ),
-    };
-
-    guardarTareas();
-    renderizarTareas();
-    ocultarModal();
-    mostrarToast("¡Tarea actualizada con éxito!");
+  // Convertir fecha yyyy-mm-dd -> dd/mm/yyyy si aplica
+  let fechaVal = document.getElementById('edit-fecha')?.value || '';
+  if (fechaVal && fechaVal.includes('-')) {
+    const parts = fechaVal.split('-');
+    fechaVal = `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
+
+  const body = {
+    titulo: document.getElementById('edit-titulo')?.value.trim() || '',
+    descripcion:
+      document.getElementById('edit-descripcion')?.value.trim() || '',
+    asignado: document.getElementById('edit-asignado')?.value || '',
+    fecha: fechaVal,
+    prioridad: document.getElementById('edit-prioridad')?.value || 'medium',
+    estado: document.getElementById('edit-estado')?.value || 'pending',
+    departamento: asignarDepartamento(
+      document.getElementById('edit-asignado')?.value,
+    ),
+  };
+
+  api
+    .put(`/tareas/${id}`, body)
+    .then((res) => {
+      const updated = res && res.data ? res.data : res;
+      // Reemplazar en memoria
+      tareas = tareas.map((t) =>
+        t.id === id || t._id === id ? mapServerTarea(updated) : t,
+      );
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast('¡Tarea actualizada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error actualizando tarea', err);
+      mostrarToast(err.message || 'Error al actualizar tarea', 'error');
+    });
 }
 
 function eliminarTarea(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta tarea?")) {
-    tareas = tareas.filter((t) => t.id !== id);
-    guardarTareas();
-    renderizarTareas();
-    mostrarToast("¡Tarea eliminada con éxito!");
-  }
+  if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) return;
+  api
+    .delete(`/tareas/${id}`)
+    .then(() => {
+      tareas = tareas.filter((t) => t.id !== id && t._id !== id);
+      renderizarTareas();
+      mostrarToast('¡Tarea eliminada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error eliminando tarea', err);
+      mostrarToast(err.message || 'Error al eliminar tarea', 'error');
+    });
 }
 
 function guardarTareas() {
-  // Los datos se mantienen en el arreglo tareas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Tareas guardadas en memoria:", tareas.length, "elementos");
+  // Antes: persistía en memoria. Ahora la persistencia se realiza via API.
+  // Esta función se mantiene como placeholder para compatibilidad.
+}
+
+// Normalizar objeto recibido desde el servidor
+function mapServerTarea(t) {
+  if (!t) return t;
+  const copy = Object.assign({}, t);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
 }
 
 function asignarDepartamento(asignado) {
   const departamentos = {
-    "Carlos Martínez": "Logística",
-    "María López": "Gestión de Documentos",
-    "Juan Pérez": "Mantenimiento",
+    'Carlos Martínez': 'Logística',
+    'María López': 'Gestión de Documentos',
+    'Juan Pérez': 'Mantenimiento',
   };
-  return departamentos[asignado] || "Operaciones Portuarias";
+  return departamentos[asignado] || 'Operaciones Portuarias';
 }
 
 // Funciones para toast
-function mostrarToast(mensaje, tipo = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
+  const toast = document.getElementById('toast');
   if (toast) {
-    toast.classList.add("hidden");
+    toast.classList.add('hidden');
   }
 }

@@ -1,26 +1,48 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let facturas = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarFacturas();
+async function inicializarModulo() {
+  console.log('Inicializando módulo...');
   configurarEventosGlobales();
+  await cargarFacturas();
 }
 
 // Auto-inicialización cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", inicializarModulo);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarModulo);
 } else {
   // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
 }
 
+async function cargarFacturas() {
+  try {
+    const res = await api.get('/facturas');
+    const payload = res && res.data ? res.data : res;
+    if (payload && Array.isArray(payload.items))
+      facturas = payload.items.map(mapServerFactura);
+    else if (Array.isArray(payload)) facturas = payload.map(mapServerFactura);
+    else facturas = [];
+    renderizarFacturas();
+  } catch (err) {
+    console.error('Error cargando facturas', err);
+  }
+}
+
+function mapServerFactura(f) {
+  if (!f) return f;
+  const copy = Object.assign({}, f);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
+}
+
 function renderizarFacturas() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -67,13 +89,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           porcentajePendientes > 30
-                            ? "text-red-600"
-                            : "text-green-600"
+                            ? 'text-red-600'
+                            : 'text-green-600'
                         }">
                             <i class="fas ${
                               porcentajePendientes > 30
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${porcentajePendientes}%
                         </span>
                         del total
@@ -95,13 +117,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           porcentajePagadas > 70
-                            ? "text-green-600"
-                            : "text-yellow-600"
+                            ? 'text-green-600'
+                            : 'text-yellow-600'
                         }">
                             <i class="fas ${
                               porcentajePagadas > 70
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${porcentajePagadas}%
                         </span>
                         tasa de éxito
@@ -123,13 +145,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           variacionIngresos >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? 'text-green-600'
+                            : 'text-red-600'
                         }">
                             <i class="fas ${
                               variacionIngresos >= 0
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${Math.abs(variacionIngresos)}%
                         </span>
                         vs. mes anterior
@@ -218,15 +240,15 @@ function crearEstructuraCompleta() {
 }
 
 function renderizarTablaFacturas() {
-  const tableBody = document.getElementById("facturas-table-body");
+  const tableBody = document.getElementById('facturas-table-body');
   if (!tableBody) {
-    console.error("No se encontró el table body para facturas");
+    console.error('No se encontró el table body para facturas');
     return;
   }
 
   tableBody.innerHTML = facturas
     .map((factura) => renderFilaFactura(factura))
-    .join("");
+    .join('');
 }
 
 function renderFilaFactura(factura) {
@@ -234,19 +256,19 @@ function renderFilaFactura(factura) {
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                  factura.idFactura
+                  factura.idFactura,
                 )}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">${escapeHtml(
-                  factura.cliente
+                  factura.cliente,
                 )}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${
               factura.fechaEmision
             }</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatearMoneda(
-              factura.monto
+              factura.monto,
             )}</td>
             <td class="px-6 py-4 whitespace-nowrap">
                 ${getBadgeEstado(factura.estado)}
@@ -275,12 +297,12 @@ function actualizarTodo() {
 
 function calcularEstadisticas() {
   const facturasPendientes = facturas.filter(
-    (f) => f.estado === "pending"
+    (f) => f.estado === 'pending',
   ).length;
-  const facturasPagadas = facturas.filter((f) => f.estado === "paid").length;
+  const facturasPagadas = facturas.filter((f) => f.estado === 'paid').length;
 
   const ingresosTotales = facturas
-    .filter((f) => f.estado === "paid")
+    .filter((f) => f.estado === 'paid')
     .reduce((sum, f) => sum + f.monto, 0);
 
   return {
@@ -293,7 +315,7 @@ function calcularEstadisticas() {
 
 function calcularVariacionIngresos() {
   const ingresosActuales = facturas
-    .filter((f) => f.estado === "paid")
+    .filter((f) => f.estado === 'paid')
     .reduce((sum, f) => sum + f.monto, 0);
 
   // Simular ingresos del mes anterior (80% de los actuales)
@@ -301,7 +323,7 @@ function calcularVariacionIngresos() {
 
   if (ingresosMesAnterior === 0) return 0;
   return Math.round(
-    ((ingresosActuales - ingresosMesAnterior) / ingresosMesAnterior) * 100
+    ((ingresosActuales - ingresosMesAnterior) / ingresosMesAnterior) * 100,
   );
 }
 
@@ -320,75 +342,75 @@ function actualizarTarjetasEstadisticas() {
 
   // Actualizar tarjeta de facturas pendientes
   const tarjetaPendientes = document.querySelector(
-    ".bg-white.border-l-4.border-emerald-500"
+    '.bg-white.border-l-4.border-emerald-500',
   );
   if (tarjetaPendientes) {
-    tarjetaPendientes.querySelector("h2").textContent =
+    tarjetaPendientes.querySelector('h2').textContent =
       stats.facturasPendientes;
-    const porcentajeElement = tarjetaPendientes.querySelector(".text-sm span");
+    const porcentajeElement = tarjetaPendientes.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      porcentajePendientes > 30 ? "text-red-600" : "text-green-600"
+      porcentajePendientes > 30 ? 'text-red-600' : 'text-green-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      porcentajePendientes > 30 ? "fa-arrow-up" : "fa-arrow-down"
+      porcentajePendientes > 30 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${porcentajePendientes}% del total`;
   }
 
   // Actualizar tarjeta de facturas pagadas
   const tarjetaPagadas = document.querySelector(
-    ".bg-white.border-l-4.border-sky-500"
+    '.bg-white.border-l-4.border-sky-500',
   );
   if (tarjetaPagadas) {
-    tarjetaPagadas.querySelector("h2").textContent = stats.facturasPagadas;
-    const porcentajeElement = tarjetaPagadas.querySelector(".text-sm span");
+    tarjetaPagadas.querySelector('h2').textContent = stats.facturasPagadas;
+    const porcentajeElement = tarjetaPagadas.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      porcentajePagadas > 70 ? "text-green-600" : "text-yellow-600"
+      porcentajePagadas > 70 ? 'text-green-600' : 'text-yellow-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      porcentajePagadas > 70 ? "fa-arrow-up" : "fa-arrow-down"
+      porcentajePagadas > 70 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${porcentajePagadas}% tasa de éxito`;
   }
 
   // Actualizar tarjeta de ingresos
   const tarjetaIngresos = document.querySelector(
-    ".bg-white.border-l-4.border-rose-500"
+    '.bg-white.border-l-4.border-rose-500',
   );
   if (tarjetaIngresos) {
-    tarjetaIngresos.querySelector("h2").textContent = stats.ingresosTotales;
-    const porcentajeElement = tarjetaIngresos.querySelector(".text-sm span");
+    tarjetaIngresos.querySelector('h2').textContent = stats.ingresosTotales;
+    const porcentajeElement = tarjetaIngresos.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionIngresos >= 0 ? "text-green-600" : "text-red-600"
+      variacionIngresos >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionIngresos >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionIngresos >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionIngresos)}% vs. mes anterior`;
   }
 }
 
 function actualizarEstadisticasEstado() {
-  const container = document.getElementById("estadisticas-estado");
+  const container = document.getElementById('estadisticas-estado');
   if (!container) return;
 
   const estados = {
     paid: {
-      nombre: "Pagadas",
-      color: "green",
-      cantidad: facturas.filter((f) => f.estado === "paid").length,
+      nombre: 'Pagadas',
+      color: 'green',
+      cantidad: facturas.filter((f) => f.estado === 'paid').length,
     },
     pending: {
-      nombre: "Pendientes",
-      color: "yellow",
-      cantidad: facturas.filter((f) => f.estado === "pending").length,
+      nombre: 'Pendientes',
+      color: 'yellow',
+      cantidad: facturas.filter((f) => f.estado === 'pending').length,
     },
     overdue: {
-      nombre: "Vencidas",
-      color: "red",
-      cantidad: facturas.filter((f) => f.estado === "overdue").length,
+      nombre: 'Vencidas',
+      color: 'red',
+      cantidad: facturas.filter((f) => f.estado === 'overdue').length,
     },
     cancelled: {
-      nombre: "Canceladas",
-      color: "gray",
-      cantidad: facturas.filter((f) => f.estado === "cancelled").length,
+      nombre: 'Canceladas',
+      color: 'gray',
+      cantidad: facturas.filter((f) => f.estado === 'cancelled').length,
     },
   };
 
@@ -415,16 +437,16 @@ function actualizarEstadisticasEstado() {
       }%"></div>
                 </div>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarProximosVencimientos() {
-  const container = document.getElementById("proximos-vencimientos");
+  const container = document.getElementById('proximos-vencimientos');
   if (!container) return;
 
-  const proximas = facturas.filter((f) => f.estado === "pending").slice(0, 4);
+  const proximas = facturas.filter((f) => f.estado === 'pending').slice(0, 4);
 
   container.innerHTML = proximas
     .map(
@@ -435,36 +457,36 @@ function actualizarProximosVencimientos() {
                 </div>
                 <div class="flex-1">
                     <h3 class="text-sm font-medium">${escapeHtml(
-                      factura.idFactura
+                      factura.idFactura,
                     )} - ${escapeHtml(factura.cliente)}</h3>
                     <p class="text-xs text-gray-500">Vence: ${calcularFechaVencimiento(
-                      factura.fechaEmision
+                      factura.fechaEmision,
                     )} - Monto: ${formatearMoneda(factura.monto)}</p>
                 </div>
                 <span class="status-badge status-pending border">Pendiente</span>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventosGlobales() {
   // Configurar eventos del modal
-  const modal = document.getElementById("modal");
-  const modalClose = document.getElementById("modal-close");
-  const modalCancel = document.getElementById("modal-cancel");
+  const modal = document.getElementById('modal');
+  const modalClose = document.getElementById('modal-close');
+  const modalCancel = document.getElementById('modal-cancel');
 
   if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
+    modalClose.addEventListener('click', ocultarModal);
   }
 
   if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
+    modalCancel.addEventListener('click', ocultarModal);
   }
 
   // Cerrar modal al hacer clic fuera
   if (modal) {
-    modal.addEventListener("click", function (e) {
+    modal.addEventListener('click', function (e) {
       if (e.target === modal) {
         ocultarModal();
       }
@@ -472,16 +494,16 @@ function configurarEventosGlobales() {
   }
 
   // Configurar toast
-  const toastClose = document.getElementById("toast-close");
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 
   // Usar event delegation para el botón de nueva factura
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-nueva-factura" ||
-      e.target.closest("#btn-nueva-factura")
+      e.target.id === 'btn-nueva-factura' ||
+      e.target.closest('#btn-nueva-factura')
     ) {
       mostrarModalCrear();
     }
@@ -489,60 +511,60 @@ function configurarEventosGlobales() {
 }
 
 function configurarEventosTabla() {
-  const tableBody = document.getElementById("facturas-table-body");
+  const tableBody = document.getElementById('facturas-table-body');
   if (!tableBody) return;
 
   // Usar event delegation para los botones de editar y eliminar
-  tableBody.addEventListener("click", (e) => {
+  tableBody.addEventListener('click', (e) => {
     const target = e.target;
-    const editBtn = target.closest(".edit-btn");
-    const deleteBtn = target.closest(".delete-btn");
+    const editBtn = target.closest('.edit-btn');
+    const deleteBtn = target.closest('.delete-btn');
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarFactura(id);
     }
   });
 
   // Configurar filtros
-  const filtroEstado = document.getElementById("filtro-estado");
-  const filtroCliente = document.getElementById("filtro-cliente");
-  const buscarFacturas = document.getElementById("buscar-facturas");
+  const filtroEstado = document.getElementById('filtro-estado');
+  const filtroCliente = document.getElementById('filtro-cliente');
+  const buscarFacturas = document.getElementById('buscar-facturas');
 
   if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
   }
   if (filtroCliente) {
-    filtroCliente.addEventListener("change", aplicarFiltros);
+    filtroCliente.addEventListener('change', aplicarFiltros);
   }
   if (buscarFacturas) {
-    buscarFacturas.addEventListener("input", aplicarFiltros);
+    buscarFacturas.addEventListener('input', aplicarFiltros);
   }
 }
 
 function aplicarFiltros() {
-  const filtroEstado = document.getElementById("filtro-estado")?.value;
-  const filtroCliente = document.getElementById("filtro-cliente")?.value;
+  const filtroEstado = document.getElementById('filtro-estado')?.value;
+  const filtroCliente = document.getElementById('filtro-cliente')?.value;
   const textoBusqueda = document
-    .getElementById("buscar-facturas")
+    .getElementById('buscar-facturas')
     ?.value.toLowerCase();
 
   let facturasFiltradas = facturas;
 
   if (filtroEstado) {
     facturasFiltradas = facturasFiltradas.filter(
-      (f) => f.estado === filtroEstado
+      (f) => f.estado === filtroEstado,
     );
   }
 
   if (filtroCliente) {
     facturasFiltradas = facturasFiltradas.filter(
-      (f) => f.cliente === filtroCliente
+      (f) => f.cliente === filtroCliente,
     );
   }
 
@@ -550,7 +572,7 @@ function aplicarFiltros() {
     facturasFiltradas = facturasFiltradas.filter(
       (f) =>
         f.idFactura.toLowerCase().includes(textoBusqueda) ||
-        f.cliente.toLowerCase().includes(textoBusqueda)
+        f.cliente.toLowerCase().includes(textoBusqueda),
     );
   }
 
@@ -558,36 +580,36 @@ function aplicarFiltros() {
 }
 
 function renderizarTablaFiltrada(facturasFiltradas) {
-  const tableBody = document.getElementById("facturas-table-body");
+  const tableBody = document.getElementById('facturas-table-body');
   if (!tableBody) return;
 
   tableBody.innerHTML = facturasFiltradas
     .map((factura) => renderFilaFactura(factura))
-    .join("");
+    .join('');
 }
 
 // Funciones auxiliares
 function formatearMoneda(monto) {
   if (monto >= 1000000) {
-    return "$" + (monto / 1000000).toFixed(1) + "M";
+    return '$' + (monto / 1000000).toFixed(1) + 'M';
   } else if (monto >= 1000) {
-    return "$" + (monto / 1000).toFixed(1) + "K";
+    return '$' + (monto / 1000).toFixed(1) + 'K';
   }
-  return "$" + monto.toLocaleString();
+  return '$' + monto.toLocaleString();
 }
 
 function generarOpcionesClientes() {
   const clientes = [...new Set(facturas.map((f) => f.cliente))];
   return clientes
     .map((cliente) => `<option value="${cliente}">${cliente}</option>`)
-    .join("");
+    .join('');
 }
 
 function calcularFechaVencimiento(fechaEmision) {
   // Simular fecha de vencimiento (30 días después)
-  const fecha = new Date(fechaEmision.split("/").reverse().join("-"));
+  const fecha = new Date(fechaEmision.split('/').reverse().join('-'));
   fecha.setDate(fecha.getDate() + 30);
-  return fecha.toLocaleDateString("es-ES");
+  return fecha.toLocaleDateString('es-ES');
 }
 
 function getBadgeEstado(estado) {
@@ -606,34 +628,34 @@ function getBadgeEstado(estado) {
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
+  if (!text) return '';
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 // Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
-  const modalTitle = document.getElementById("modal-title");
-  const modalBody = document.getElementById("modal-body");
-  const modalSave = document.getElementById("modal-save");
-  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalSave = document.getElementById('modal-save');
+  const modal = document.getElementById('modal');
 
   if (!modal || !modalTitle || !modalBody || !modalSave) {
-    console.error("Elementos del modal no encontrados");
+    console.error('Elementos del modal no encontrados');
     return;
   }
 
   modalTitle.textContent = titulo;
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
-  modal.classList.remove("hidden");
+  modal.classList.remove('hidden');
 }
 
 function ocultarModal() {
-  const modal = document.getElementById("modal");
+  const modal = document.getElementById('modal');
   if (modal) {
-    modal.classList.add("hidden");
+    modal.classList.add('hidden');
   }
 }
 
@@ -670,15 +692,15 @@ function mostrarModalCrear() {
         </div>
     `;
 
-  mostrarModal("Nueva Factura", campos, crearFactura);
+  mostrarModal('Nueva Factura', campos, crearFactura);
 }
 
 function mostrarModalEditar(id) {
-  const factura = facturas.find((f) => f.id === id);
+  const factura = facturas.find((f) => f.id == id || f._id == id);
   if (!factura) return;
 
   // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
-  const [dia, mes, anio] = factura.fechaEmision.split("/");
+  const [dia, mes, anio] = factura.fechaEmision.split('/');
   const fechaInput = `${anio}-${mes}-${dia}`;
 
   const campos = `
@@ -687,13 +709,13 @@ function mostrarModalEditar(id) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ID Factura *</label>
                 <input type="text" id="edit-idFactura" value="${escapeHtml(
-                  factura.idFactura
+                  factura.idFactura,
                 )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
                 <input type="text" id="edit-cliente" value="${escapeHtml(
-                  factura.cliente
+                  factura.cliente,
                 )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -712,123 +734,141 @@ function mostrarModalEditar(id) {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                 <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     <option value="paid" ${
-                      factura.estado === "paid" ? "selected" : ""
+                      factura.estado === 'paid' ? 'selected' : ''
                     }>Pagada</option>
                     <option value="pending" ${
-                      factura.estado === "pending" ? "selected" : ""
+                      factura.estado === 'pending' ? 'selected' : ''
                     }>Pendiente</option>
                     <option value="overdue" ${
-                      factura.estado === "overdue" ? "selected" : ""
+                      factura.estado === 'overdue' ? 'selected' : ''
                     }>Vencida</option>
                     <option value="cancelled" ${
-                      factura.estado === "cancelled" ? "selected" : ""
+                      factura.estado === 'cancelled' ? 'selected' : ''
                     }>Cancelada</option>
                 </select>
             </div>
         </div>
     `;
 
-  mostrarModal("Editar Factura", campos, editarFactura);
+  mostrarModal('Editar Factura', campos, editarFactura);
 }
 
 function crearFactura() {
-  const idFactura = document.getElementById("create-idFactura")?.value.trim();
-  const cliente = document.getElementById("create-cliente")?.value.trim();
-  const fechaInput = document.getElementById("create-fechaEmision")?.value;
-  const monto = parseFloat(document.getElementById("create-monto")?.value);
+  const idFactura = document.getElementById('create-idFactura')?.value.trim();
+  const cliente = document.getElementById('create-cliente')?.value.trim();
+  const fechaInput = document.getElementById('create-fechaEmision')?.value;
+  const monto = parseFloat(document.getElementById('create-monto')?.value);
 
   if (!idFactura || !cliente || !fechaInput || isNaN(monto)) {
-    mostrarToast("Por favor complete todos los campos obligatorios", "error");
+    mostrarToast('Por favor complete todos los campos obligatorios', 'error');
     return;
   }
 
   // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
-  const [anio, mes, dia] = fechaInput.split("-");
+  const [anio, mes, dia] = fechaInput.split('-');
   const fechaEmision = `${dia}/${mes}/${anio}`;
 
-  const nuevaFactura = {
-    id: Date.now(),
+  const body = {
     idFactura: idFactura,
     cliente: cliente,
     fechaEmision: fechaEmision,
     monto: monto,
-    estado: document.getElementById("create-estado")?.value || "pending",
+    estado: document.getElementById('create-estado')?.value || 'pending',
   };
 
-  facturas.push(nuevaFactura);
-  guardarFacturas();
-  renderizarFacturas();
-  ocultarModal();
-  mostrarToast("¡Factura creada con éxito!");
+  api
+    .post('/facturas', body)
+    .then((res) => {
+      const created = res && res.data ? res.data : res;
+      facturas.unshift(mapServerFactura(created));
+      renderizarFacturas();
+      ocultarModal();
+      mostrarToast('¡Factura creada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error creando factura', err);
+      mostrarToast(err.message || 'Error al crear factura', 'error');
+    });
 }
 
 function editarFactura() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const facturaIndex = facturas.findIndex((f) => f.id === id);
+  const id = document.getElementById('edit-id')?.value;
+  if (!id) return;
+  const fechaInput = document.getElementById('edit-fechaEmision')?.value;
+  const [anio, mes, dia] = fechaInput.split('-');
+  const fechaEmision = `${dia}/${mes}/${anio}`;
 
-  if (facturaIndex !== -1) {
-    const fechaInput = document.getElementById("edit-fechaEmision")?.value;
-    const [anio, mes, dia] = fechaInput.split("-");
-    const fechaEmision = `${dia}/${mes}/${anio}`;
+  const body = {
+    idFactura: document.getElementById('edit-idFactura')?.value.trim() || '',
+    cliente: document.getElementById('edit-cliente')?.value.trim() || '',
+    fechaEmision: fechaEmision,
+    monto: parseFloat(document.getElementById('edit-monto')?.value) || 0,
+    estado: document.getElementById('edit-estado')?.value || 'pending',
+  };
 
-    facturas[facturaIndex] = {
-      ...facturas[facturaIndex],
-      idFactura: document.getElementById("edit-idFactura")?.value.trim() || "",
-      cliente: document.getElementById("edit-cliente")?.value.trim() || "",
-      fechaEmision: fechaEmision,
-      monto: parseFloat(document.getElementById("edit-monto")?.value) || 0,
-      estado: document.getElementById("edit-estado")?.value || "pending",
-    };
-
-    guardarFacturas();
-    renderizarFacturas();
-    ocultarModal();
-    mostrarToast("¡Factura actualizada con éxito!");
-  }
+  api
+    .put(`/facturas/${id}`, body)
+    .then((res) => {
+      const updated = res && res.data ? res.data : res;
+      facturas = facturas.map((f) =>
+        f.id == id || f._id == id ? mapServerFactura(updated) : f,
+      );
+      renderizarFacturas();
+      ocultarModal();
+      mostrarToast('¡Factura actualizada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error actualizando factura', err);
+      mostrarToast(err.message || 'Error al actualizar factura', 'error');
+    });
 }
 
 function eliminarFactura(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta factura?")) {
-    facturas = facturas.filter((f) => f.id !== id);
-    guardarFacturas();
-    renderizarFacturas();
-    mostrarToast("¡Factura eliminada con éxito!");
-  }
+  if (!confirm('¿Estás seguro de que quieres eliminar esta factura?')) return;
+  api
+    .delete(`/facturas/${id}`)
+    .then(() => {
+      facturas = facturas.filter((f) => f.id != id && f._id != id);
+      renderizarFacturas();
+      mostrarToast('¡Factura eliminada con éxito!');
+    })
+    .catch((err) => {
+      console.error('Error eliminando factura', err);
+      mostrarToast(err.message || 'Error al eliminar factura', 'error');
+    });
 }
 
 function guardarFacturas() {
-  // Los datos se mantienen en el arreglo facturas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Facturas guardadas en memoria:", facturas.length, "elementos");
+  // Placeholder: persistencia ahora en backend
 }
 
 // Funciones para toast
-function mostrarToast(mensaje, tipo = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
+  const toast = document.getElementById('toast');
   if (toast) {
-    toast.classList.add("hidden");
+    toast.classList.add('hidden');
   }
 }
