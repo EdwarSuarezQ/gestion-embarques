@@ -1,8 +1,37 @@
-let personal = [];
+import apiService from '../../assets/JS/utils/apiService.js';
 
-function inicializar() {
+let personal = []; // Cache local para renderizado rápido
+
+async function inicializar() {
+  console.log("Inicializando módulo de personal...");
+  await cargarPersonal();
   renderizarPersonal();
   configurarEventosGlobales();
+}
+
+// Cargar personal desde la API
+async function cargarPersonal() {
+  try {
+    mostrarCargando(true);
+    const response = await apiService.getPersonal(1, 100);
+    if (response.success) {
+      personal = response.data.data || response.data || [];
+      console.log(`Cargado ${personal.length} personal desde la API`);
+    }
+  } catch (error) {
+    console.error("Error al cargar personal:", error);
+    mostrarToast("Error al cargar el personal", "error");
+    personal = [];
+  } finally {
+    mostrarCargando(false);
+  }
+}
+
+function mostrarCargando(mostrar) {
+  const loader = document.getElementById("loader");
+  if (loader) {
+    loader.style.display = mostrar ? "block" : "none";
+  }
 }
 
 function renderizarPersonal() {
@@ -312,12 +341,12 @@ function renderFilaPersonal(persona) {
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <button class="text-blue-600 hover:text-blue-800 mr-3 edit-personal-btn" data-id="${
-          persona.id
+          persona._id || persona.id
         }">
           <i class="fas fa-edit"></i>
         </button>
         <button class="text-red-600 hover:text-red-800 delete-personal-btn" data-id="${
-          persona.id
+          persona._id || persona.id
         }">
           <i class="fas fa-trash"></i>
         </button>
@@ -499,12 +528,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-personal-btn");
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarPersonal(id);
     }
   });
@@ -720,7 +749,7 @@ function mostrarModalCrear() {
 // ========================
 
 // Crear nuevo personal
-function crearPersonal() {
+async function crearPersonal() {
   const nombre = document.getElementById("create-nombre").value.trim();
   const email = document.getElementById("create-email").value.trim();
   const puesto = document.getElementById("create-puesto").value;
@@ -732,26 +761,41 @@ function crearPersonal() {
   }
 
   const nuevo = {
-    id: Date.now(),
     nombre,
     email,
     puesto,
     departamento,
-    estado: "active",
+    estado: document.getElementById("create-estado")?.value || "active",
   };
 
-  personal.push(nuevo);
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  ocultarModal();
-  mostrarToast("Empleado agregado con éxito.", "success");
+  try {
+    mostrarCargando(true);
+    const response = await apiService.createPersonal(nuevo);
+    if (response.success) {
+      await cargarPersonal();
+      renderizarPersonal();
+      ocultarModal();
+      mostrarToast("Empleado agregado con éxito.", "success");
+    } else {
+      mostrarToast("Error al crear el empleado", "error");
+    }
+  } catch (error) {
+    console.error("Error al crear personal:", error);
+    mostrarToast("Error al crear el empleado", "error");
+  } finally {
+    mostrarCargando(false);
+  }
 }
 
 // Mostrar modal de edición
-function mostrarModalEditar(id) {
-  const persona = personal.find((p) => p.id === id);
-  if (!persona) return;
+async function mostrarModalEditar(id) {
+  try {
+    const response = await apiService.getPersonalById(id);
+    if (!response.success) {
+      mostrarToast("Error al cargar el empleado", "error");
+      return;
+    }
+    const persona = response.data;
 
   const campos = `
     <div class="space-y-4">
@@ -887,44 +931,75 @@ function mostrarModalEditar(id) {
     </div>
   `;
 
-  mostrarModal("Editar Empleado", campos, () => editarPersonal(id));
+    mostrarModal("Editar Empleado", campos, () => editarPersonal(id));
+  } catch (error) {
+    console.error("Error al cargar personal:", error);
+    mostrarToast("Error al cargar el empleado", "error");
+  }
 }
 
 // Editar empleado
-function editarPersonal(id) {
-  const persona = personal.find((p) => p.id === id);
-  if (!persona) return;
+async function editarPersonal(id) {
+  if (!id) return;
 
-  persona.nombre = document.getElementById("edit-nombre").value.trim();
-  persona.email = document.getElementById("edit-email").value.trim();
-  persona.puesto = document.getElementById("edit-puesto").value.trim();
-  persona.departamento = document
-    .getElementById("edit-departamento")
-    .value.trim();
-  persona.estado = document.getElementById("edit-estado").value;
+  const nombre = document.getElementById("edit-nombre").value.trim();
+  const email = document.getElementById("edit-email").value.trim();
+  const puesto = document.getElementById("edit-puesto").value.trim();
+  const departamento = document.getElementById("edit-departamento").value.trim();
+  const estado = document.getElementById("edit-estado").value;
 
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  ocultarModal();
-  mostrarToast("Empleado actualizado correctamente.", "success");
+  if (!nombre || !email || !puesto || !departamento) {
+    mostrarToast("Por favor, completa todos los campos obligatorios.", "error");
+    return;
+  }
+
+  const personalActualizado = {
+    nombre,
+    email,
+    puesto,
+    departamento,
+    estado,
+  };
+
+  try {
+    mostrarCargando(true);
+    const response = await apiService.updatePersonal(id, personalActualizado);
+    if (response.success) {
+      await cargarPersonal();
+      renderizarPersonal();
+      ocultarModal();
+      mostrarToast("Empleado actualizado correctamente.", "success");
+    } else {
+      mostrarToast("Error al actualizar el empleado", "error");
+    }
+  } catch (error) {
+    console.error("Error al actualizar personal:", error);
+    mostrarToast("Error al actualizar el empleado", "error");
+  } finally {
+    mostrarCargando(false);
+  }
 }
 
 // Eliminar empleado
-function eliminarPersonal(id) {
+async function eliminarPersonal(id) {
   if (!confirm("¿Seguro que deseas eliminar este empleado?")) return;
 
-  personal = personal.filter((p) => p.id !== id);
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  mostrarToast("Empleado eliminado.", "success");
-}
-
-function guardarPersonal() {
-  // Los datos se mantienen en el arreglo personal en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Personal guardado en memoria:", personal.length, "elementos");
+  try {
+    mostrarCargando(true);
+    const response = await apiService.deletePersonal(id);
+    if (response.success) {
+      await cargarPersonal();
+      renderizarPersonal();
+      mostrarToast("Empleado eliminado.", "success");
+    } else {
+      mostrarToast("Error al eliminar el empleado", "error");
+    }
+  } catch (error) {
+    console.error("Error al eliminar personal:", error);
+    mostrarToast("Error al eliminar el empleado", "error");
+  } finally {
+    mostrarCargando(false);
+  }
 }
 
 // Toast
