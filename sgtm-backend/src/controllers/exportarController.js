@@ -6,7 +6,7 @@ const path = require('path');
 
 // @desc    Obtener tipos de reporte disponibles
 // @route   GET /api/exportar/tipos
-// @access  Public
+// @access  Private
 exports.getTipos = async (req, res, next) => {
   try {
     const tipos = exportacionService.getTiposReporte();
@@ -18,7 +18,7 @@ exports.getTipos = async (req, res, next) => {
 
 // @desc    Generar exportación
 // @route   POST /api/exportar/generar
-// @access  Public
+// @access  Private
 exports.generar = async (req, res, next) => {
   try {
     const { tipo, formato, modulo, campos, filtros } = req.body;
@@ -37,7 +37,7 @@ exports.generar = async (req, res, next) => {
       modulo,
       campos,
       filtros || {},
-      null // Sin usuario
+      req.user.id
     );
 
     successResponse(res, exportacion, 'Exportación generada exitosamente', 201);
@@ -48,7 +48,7 @@ exports.generar = async (req, res, next) => {
 
 // @desc    Generar múltiples exportaciones
 // @route   POST /api/exportar/multiple
-// @access  Public
+// @access  Private
 exports.generarMultiple = async (req, res, next) => {
   try {
     const { exportaciones } = req.body;
@@ -65,7 +65,7 @@ exports.generarMultiple = async (req, res, next) => {
           exp.modulo,
           exp.campos,
           exp.filtros || {},
-          null // Sin usuario
+          req.user.id
         )
       )
     );
@@ -87,7 +87,7 @@ exports.generarMultiple = async (req, res, next) => {
 
 // @desc    Programar exportación
 // @route   POST /api/exportar/programar
-// @access  Public
+// @access  Private
 exports.programar = async (req, res, next) => {
   try {
     const { tipo, formato, modulo, campos, filtros, fechaProgramada } = req.body;
@@ -101,7 +101,7 @@ exports.programar = async (req, res, next) => {
       campos,
       filtros: filtros || {},
       estado: 'pending',
-      creadoPor: null // Sin usuario
+      creadoPor: req.user.id
     });
 
     successResponse(res, exportacion, 'Exportación programada exitosamente', 201);
@@ -112,11 +112,11 @@ exports.programar = async (req, res, next) => {
 
 // @desc    Obtener historial de exportaciones
 // @route   GET /api/exportar/historial
-// @access  Public
+// @access  Private
 exports.getHistorial = async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const historial = await exportacionService.getHistorial(null, limit);
+    const historial = await exportacionService.getHistorial(req.user.id, limit);
     successResponse(res, historial);
   } catch (error) {
     next(error);
@@ -125,7 +125,7 @@ exports.getHistorial = async (req, res, next) => {
 
 // @desc    Descargar archivo de exportación
 // @route   GET /api/exportar/descargar/:id
-// @access  Public
+// @access  Private
 exports.descargar = async (req, res, next) => {
   try {
     const exportacion = await Exportacion.findById(req.params.id);
@@ -150,7 +150,7 @@ exports.descargar = async (req, res, next) => {
 
 // @desc    Eliminar exportación
 // @route   DELETE /api/exportar/:id
-// @access  Public
+// @access  Private
 exports.eliminar = async (req, res, next) => {
   try {
     const exportacion = await Exportacion.findById(req.params.id);
@@ -173,7 +173,7 @@ exports.eliminar = async (req, res, next) => {
 
 // @desc    Obtener estado de exportación
 // @route   GET /api/exportar/estado/:id
-// @access  Public
+// @access  Private
 exports.getEstado = async (req, res, next) => {
   try {
     const exportacion = await Exportacion.findById(req.params.id);

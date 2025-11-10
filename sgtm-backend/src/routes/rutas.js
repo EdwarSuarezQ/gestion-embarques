@@ -1,20 +1,21 @@
 const express = require('express');
 const router = require('express').Router();
 const rutasController = require('../controllers/rutasController');
+const { protect } = require('../middleware/auth');
 const { validateRuta, validatePagination } = require('../utils/validators');
 
-router.post('/', validateRuta, rutasController.createRuta);
-router.get('/', validatePagination, rutasController.getRutas);
-router.get('/estadisticas', rutasController.getEstadisticas);
-router.get('/activas', rutasController.getRutasActivas);
-router.get('/tipo/:tipo', rutasController.getRutasByTipo);
-router.get('/origen/:ciudad', rutasController.getRutasByOrigen);
-router.get('/internacionales', rutasController.getRutasInternacionales);
-router.get('/:id', rutasController.getRuta);
-router.put('/:id', validateRuta, rutasController.updateRuta);
-router.patch('/:id', rutasController.patchRuta);
-router.put('/:id/estado', rutasController.updateEstado);
-router.delete('/:id', rutasController.deleteRuta);
+router.post('/', protect, validateRuta, rutasController.createRuta);
+router.get('/', protect, validatePagination, rutasController.getRutas);
+router.get('/estadisticas', protect, rutasController.getEstadisticas);
+router.get('/activas', protect, rutasController.getRutasActivas);
+router.get('/tipo/:tipo', protect, rutasController.getRutasByTipo);
+router.get('/origen/:ciudad', protect, rutasController.getRutasByOrigen);
+router.get('/internacionales', protect, rutasController.getRutasInternacionales);
+router.get('/:id', protect, rutasController.getRuta);
+router.put('/:id', protect, validateRuta, rutasController.updateRuta);
+router.patch('/:id', protect, rutasController.patchRuta);
+router.put('/:id/estado', protect, rutasController.updateEstado);
+router.delete('/:id', protect, rutasController.deleteRuta);
 
 module.exports = router;
 

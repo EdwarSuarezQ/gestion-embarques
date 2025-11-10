@@ -1,13 +1,14 @@
 const express = require('express');
 const router = require('express').Router();
 const estadisticasController = require('../controllers/estadisticasController');
+const { protect } = require('../middleware/auth');
 
-router.get('/generales', estadisticasController.getGenerales);
-router.get('/distribucion', estadisticasController.getDistribucion);
-router.get('/indicadores', estadisticasController.getIndicadores);
-router.get('/filtradas', estadisticasController.getFiltradas);
-router.get('/tendencias', estadisticasController.getTendencias);
-router.get('/dashboard', estadisticasController.getDashboard);
+router.get('/generales', protect, estadisticasController.getGenerales);
+router.get('/distribucion', protect, estadisticasController.getDistribucion);
+router.get('/indicadores', protect, estadisticasController.getIndicadores);
+router.get('/filtradas', protect, estadisticasController.getFiltradas);
+router.get('/tendencias', protect, estadisticasController.getTendencias);
+router.get('/dashboard', protect, estadisticasController.getDashboard);
 
 module.exports = router;
 
