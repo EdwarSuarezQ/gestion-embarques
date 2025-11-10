@@ -1,10 +1,11 @@
-let facturas = [];
+import apiService from '../../assets/JS/utils/apiService.js';
+
+let facturas = []; // Cache local para renderizado rápido
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
+async function inicializarModulo() {
+  console.log("Inicializando módulo de facturas...");
+  await cargarFacturas();
   renderizarFacturas();
   configurarEventosGlobales();
 }
@@ -13,8 +14,32 @@ function inicializarModulo() {
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", inicializarModulo);
 } else {
-  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
+}
+
+// Cargar facturas desde la API
+async function cargarFacturas() {
+  try {
+    mostrarCargando(true);
+    const response = await apiService.getFacturas(1, 100);
+    if (response.success) {
+      facturas = response.data.data || response.data || [];
+      console.log(`Cargadas ${facturas.length} facturas desde la API`);
+    }
+  } catch (error) {
+    console.error("Error al cargar facturas:", error);
+    mostrarToast("Error al cargar las facturas", "error");
+    facturas = [];
+  } finally {
+    mostrarCargando(false);
+  }
+}
+
+function mostrarCargando(mostrar) {
+  const loader = document.getElementById("loader");
+  if (loader) {
+    loader.style.display = mostrar ? "block" : "none";
+  }
 }
 
 function renderizarFacturas() {
@@ -253,12 +278,12 @@ function renderFilaFactura(factura) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${
-                  factura.id
+                  factura._id || factura.id
                 }">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                  factura.id
+                  factura._id || factura.id
                 }">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -499,12 +524,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarFactura(id);
     }
   });
@@ -673,17 +698,22 @@ function mostrarModalCrear() {
   mostrarModal("Nueva Factura", campos, crearFactura);
 }
 
-function mostrarModalEditar(id) {
-  const factura = facturas.find((f) => f.id === id);
-  if (!factura) return;
+async function mostrarModalEditar(id) {
+  try {
+    const response = await apiService.getFactura(id);
+    if (!response.success) {
+      mostrarToast("Error al cargar la factura", "error");
+      return;
+    }
+    const factura = response.data;
 
-  // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
-  const [dia, mes, anio] = factura.fechaEmision.split("/");
-  const fechaInput = `${anio}-${mes}-${dia}`;
+    // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
+    const [dia, mes, anio] = factura.fechaEmision.split("/");
+    const fechaInput = `${anio}-${mes}-${dia}`;
 
-  const campos = `
+    const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${factura.id}">
+            <input type="hidden" id="edit-id" value="${factura._id || factura.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ID Factura *</label>
                 <input type="text" id="edit-idFactura" value="${escapeHtml(
@@ -728,10 +758,14 @@ function mostrarModalEditar(id) {
         </div>
     `;
 
-  mostrarModal("Editar Factura", campos, editarFactura);
+    mostrarModal("Editar Factura", campos, editarFactura);
+  } catch (error) {
+    console.error("Error al cargar factura:", error);
+    mostrarToast("Error al cargar la factura", "error");
+  }
 }
 
-function crearFactura() {
+async function crearFactura() {
   const idFactura = document.getElementById("create-idFactura")?.value.trim();
   const cliente = document.getElementById("create-cliente")?.value.trim();
   const fechaInput = document.getElementById("create-fechaEmision")?.value;
@@ -747,7 +781,6 @@ function crearFactura() {
   const fechaEmision = `${dia}/${mes}/${anio}`;
 
   const nuevaFactura = {
-    id: Date.now(),
     idFactura: idFactura,
     cliente: cliente,
     fechaEmision: fechaEmision,
@@ -755,51 +788,79 @@ function crearFactura() {
     estado: document.getElementById("create-estado")?.value || "pending",
   };
 
-  facturas.push(nuevaFactura);
-  guardarFacturas();
-  renderizarFacturas();
-  ocultarModal();
-  mostrarToast("¡Factura creada con éxito!");
-}
-
-function editarFactura() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const facturaIndex = facturas.findIndex((f) => f.id === id);
-
-  if (facturaIndex !== -1) {
-    const fechaInput = document.getElementById("edit-fechaEmision")?.value;
-    const [anio, mes, dia] = fechaInput.split("-");
-    const fechaEmision = `${dia}/${mes}/${anio}`;
-
-    facturas[facturaIndex] = {
-      ...facturas[facturaIndex],
-      idFactura: document.getElementById("edit-idFactura")?.value.trim() || "",
-      cliente: document.getElementById("edit-cliente")?.value.trim() || "",
-      fechaEmision: fechaEmision,
-      monto: parseFloat(document.getElementById("edit-monto")?.value) || 0,
-      estado: document.getElementById("edit-estado")?.value || "pending",
-    };
-
-    guardarFacturas();
-    renderizarFacturas();
-    ocultarModal();
-    mostrarToast("¡Factura actualizada con éxito!");
+  try {
+    mostrarCargando(true);
+    const response = await apiService.createFactura(nuevaFactura);
+    if (response.success) {
+      await cargarFacturas();
+      renderizarFacturas();
+      ocultarModal();
+      mostrarToast("¡Factura creada con éxito!");
+    } else {
+      mostrarToast("Error al crear la factura", "error");
+    }
+  } catch (error) {
+    console.error("Error al crear factura:", error);
+    mostrarToast("Error al crear la factura", "error");
+  } finally {
+    mostrarCargando(false);
   }
 }
 
-function eliminarFactura(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta factura?")) {
-    facturas = facturas.filter((f) => f.id !== id);
-    guardarFacturas();
-    renderizarFacturas();
-    mostrarToast("¡Factura eliminada con éxito!");
+async function editarFactura() {
+  const id = document.getElementById("edit-id")?.value;
+  if (!id) return;
+
+  const fechaInput = document.getElementById("edit-fechaEmision")?.value;
+  const [anio, mes, dia] = fechaInput.split("-");
+  const fechaEmision = `${dia}/${mes}/${anio}`;
+
+  const facturaActualizada = {
+    idFactura: document.getElementById("edit-idFactura")?.value.trim() || "",
+    cliente: document.getElementById("edit-cliente")?.value.trim() || "",
+    fechaEmision: fechaEmision,
+    monto: parseFloat(document.getElementById("edit-monto")?.value) || 0,
+    estado: document.getElementById("edit-estado")?.value || "pending",
+  };
+
+  try {
+    mostrarCargando(true);
+    const response = await apiService.updateFactura(id, facturaActualizada);
+    if (response.success) {
+      await cargarFacturas();
+      renderizarFacturas();
+      ocultarModal();
+      mostrarToast("¡Factura actualizada con éxito!");
+    } else {
+      mostrarToast("Error al actualizar la factura", "error");
+    }
+  } catch (error) {
+    console.error("Error al actualizar factura:", error);
+    mostrarToast("Error al actualizar la factura", "error");
+  } finally {
+    mostrarCargando(false);
   }
 }
 
-function guardarFacturas() {
-  // Los datos se mantienen en el arreglo facturas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Facturas guardadas en memoria:", facturas.length, "elementos");
+async function eliminarFactura(id) {
+  if (!confirm("¿Estás seguro de que quieres eliminar esta factura?")) return;
+
+  try {
+    mostrarCargando(true);
+    const response = await apiService.deleteFactura(id);
+    if (response.success) {
+      await cargarFacturas();
+      renderizarFacturas();
+      mostrarToast("¡Factura eliminada con éxito!");
+    } else {
+      mostrarToast("Error al eliminar la factura", "error");
+    }
+  } catch (error) {
+    console.error("Error al eliminar factura:", error);
+    mostrarToast("Error al eliminar la factura", "error");
+  } finally {
+    mostrarCargando(false);
+  }
 }
 
 // Funciones para toast
