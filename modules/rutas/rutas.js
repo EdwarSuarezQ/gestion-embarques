@@ -1,11 +1,10 @@
-import apiService from '../../assets/JS/utils/apiService.js';
-
-let rutas = []; // Cache local para renderizado rápido
+let rutas = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-async function inicializarModulo() {
-  console.log("Inicializando módulo de rutas...");
-  await cargarRutas();
+function inicializarModulo() {
+  console.log("Inicializando módulo...");
+  // Mover el contenido de inicializar aquí
+
   renderizarRutas();
   configurarEventosGlobales();
 }
@@ -14,32 +13,8 @@ async function inicializarModulo() {
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", inicializarModulo);
 } else {
+  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
-}
-
-// Cargar rutas desde la API
-async function cargarRutas() {
-  try {
-    mostrarCargando(true);
-    const response = await apiService.getRutas(1, 100);
-    if (response.success) {
-      rutas = response.data.data || response.data || [];
-      console.log(`Cargadas ${rutas.length} rutas desde la API`);
-    }
-  } catch (error) {
-    console.error("Error al cargar rutas:", error);
-    mostrarToast("Error al cargar las rutas", "error");
-    rutas = [];
-  } finally {
-    mostrarCargando(false);
-  }
-}
-
-function mostrarCargando(mostrar) {
-  const loader = document.getElementById("loader");
-  if (loader) {
-    loader.style.display = mostrar ? "block" : "none";
-  }
 }
 
 function renderizarRutas() {
@@ -369,12 +344,12 @@ function renderFilaRuta(ruta) {
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
           <button class="text-blue-600 hover:text-blue-800 mr-3 edit-ruta-btn" data-id="${
-            ruta._id || ruta.id
+            ruta.id
           }">
             <i class="fas fa-edit"></i>
           </button>
           <button class="text-red-600 hover:text-red-800 delete-ruta-btn" data-id="${
-            ruta._id || ruta.id
+            ruta.id
           }">
             <i class="fas fa-trash"></i>
           </button>
@@ -512,12 +487,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-ruta-btn");
 
     if (editBtn) {
-      const id = editBtn.dataset.id;
+      const id = parseInt(editBtn.dataset.id);
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
+      const id = parseInt(deleteBtn.dataset.id);
       eliminarRuta(id);
     }
   });
@@ -698,22 +673,17 @@ function mostrarModalCrear() {
   mostrarModal("Nueva Ruta", campos, crearRuta);
 }
 
-async function mostrarModalEditar(id) {
-  try {
-    const response = await apiService.getRuta(id);
-    if (!response.success) {
-      mostrarToast("Error al cargar la ruta", "error");
-      return;
-    }
-    const ruta = response.data;
+function mostrarModalEditar(id) {
+  const ruta = rutas.find((r) => r.id === id);
+  if (!ruta) return;
 
   const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${ruta._id || ruta.id}">
+            <input type="hidden" id="edit-id" value="${ruta.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ID Ruta *</label>
                 <input type="text" id="edit-idRuta" value="${
-                  ruta._id || ruta.idRuta
+                  ruta.idRuta
                 }" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div>
@@ -806,27 +776,33 @@ async function mostrarModalEditar(id) {
         </div>
     `;
 
-    mostrarModal("Editar Ruta", campos, editarRuta);
-  } catch (error) {
-    console.error("Error al cargar ruta:", error);
-    mostrarToast("Error al cargar la ruta", "error");
-  }
+  mostrarModal("Editar Ruta", campos, editarRuta);
 }
 
-async function crearRuta() {
+function crearRuta() {
   const idRuta = document.getElementById("create-idRuta")?.value.trim();
   const nombre = document.getElementById("create-nombre")?.value.trim();
   const origen = document.getElementById("create-origen")?.value.trim();
   const paisOrigen = document.getElementById("create-paisOrigen")?.value.trim();
   const destino = document.getElementById("create-destino")?.value.trim();
-  const paisDestino = document.getElementById("create-paisDestino")?.value.trim();
+  const paisDestino = document
+    .getElementById("create-paisDestino")
+    ?.value.trim();
 
-  if (!idRuta || !nombre || !origen || !paisOrigen || !destino || !paisDestino) {
+  if (
+    !idRuta ||
+    !nombre ||
+    !origen ||
+    !paisOrigen ||
+    !destino ||
+    !paisDestino
+  ) {
     mostrarToast("Por favor complete todos los campos obligatorios", "error");
     return;
   }
 
   const nuevaRuta = {
+    id: Date.now(),
     idRuta: idRuta,
     nombre: nombre,
     origen: origen,
@@ -837,84 +813,58 @@ async function crearRuta() {
     duracion: document.getElementById("create-duracion")?.value.trim() || "",
     tipo: document.getElementById("create-tipo")?.value || "international",
     estado: document.getElementById("create-estado")?.value || "active",
-    viajesAnio: parseInt(document.getElementById("create-viajesAnio")?.value) || 0,
+    viajesAnio:
+      parseInt(document.getElementById("create-viajesAnio")?.value) || 0,
   };
 
-  try {
-    mostrarCargando(true);
-    const response = await apiService.createRuta(nuevaRuta);
-    if (response.success) {
-      await cargarRutas();
-      renderizarRutas();
-      ocultarModal();
-      mostrarToast("¡Ruta creada con éxito!");
-    } else {
-      mostrarToast("Error al crear la ruta", "error");
-    }
-  } catch (error) {
-    console.error("Error al crear ruta:", error);
-    mostrarToast("Error al crear la ruta", "error");
-  } finally {
-    mostrarCargando(false);
+  rutas.push(nuevaRuta);
+  guardarRutas();
+  renderizarRutas();
+  ocultarModal();
+  mostrarToast("¡Ruta creada con éxito!");
+}
+
+function editarRuta() {
+  const id = parseInt(document.getElementById("edit-id")?.value);
+  const rutaIndex = rutas.findIndex((r) => r.id === id);
+
+  if (rutaIndex !== -1) {
+    rutas[rutaIndex] = {
+      ...rutas[rutaIndex],
+      idRuta: document.getElementById("edit-idRuta")?.value.trim() || "",
+      nombre: document.getElementById("edit-nombre")?.value.trim() || "",
+      origen: document.getElementById("edit-origen")?.value.trim() || "",
+      paisOrigen:
+        document.getElementById("edit-paisOrigen")?.value.trim() || "",
+      destino: document.getElementById("edit-destino")?.value.trim() || "",
+      paisDestino:
+        document.getElementById("edit-paisDestino")?.value.trim() || "",
+      distancia: document.getElementById("edit-distancia")?.value.trim() || "",
+      duracion: document.getElementById("edit-duracion")?.value.trim() || "",
+      tipo: document.getElementById("edit-tipo")?.value || "international",
+      estado: document.getElementById("edit-estado")?.value || "active",
+      viajesAnio:
+        parseInt(document.getElementById("edit-viajesAnio")?.value) || 0,
+    };
+
+    guardarRutas();
+    renderizarRutas();
+    ocultarModal();
+    mostrarToast("¡Ruta actualizada con éxito!");
   }
 }
 
-async function editarRuta() {
-  const id = document.getElementById("edit-id")?.value;
-  if (!id) return;
-
-  const rutaActualizada = {
-    idRuta: document.getElementById("edit-idRuta")?.value.trim() || "",
-    nombre: document.getElementById("edit-nombre")?.value.trim() || "",
-    origen: document.getElementById("edit-origen")?.value.trim() || "",
-    paisOrigen: document.getElementById("edit-paisOrigen")?.value.trim() || "",
-    destino: document.getElementById("edit-destino")?.value.trim() || "",
-    paisDestino: document.getElementById("edit-paisDestino")?.value.trim() || "",
-    distancia: document.getElementById("edit-distancia")?.value.trim() || "",
-    duracion: document.getElementById("edit-duracion")?.value.trim() || "",
-    tipo: document.getElementById("edit-tipo")?.value || "international",
-    estado: document.getElementById("edit-estado")?.value || "active",
-    viajesAnio: parseInt(document.getElementById("edit-viajesAnio")?.value) || 0,
-  };
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.updateRuta(id, rutaActualizada);
-    if (response.success) {
-      await cargarRutas();
-      renderizarRutas();
-      ocultarModal();
-      mostrarToast("¡Ruta actualizada con éxito!");
-    } else {
-      mostrarToast("Error al actualizar la ruta", "error");
-    }
-  } catch (error) {
-    console.error("Error al actualizar ruta:", error);
-    mostrarToast("Error al actualizar la ruta", "error");
-  } finally {
-    mostrarCargando(false);
+function eliminarRuta(id) {
+  if (confirm("¿Estás seguro de que quieres eliminar esta ruta?")) {
+    rutas = rutas.filter((r) => r.id !== id);
+    guardarRutas();
+    renderizarRutas();
+    mostrarToast("¡Ruta eliminada con éxito!");
   }
 }
 
-async function eliminarRuta(id) {
-  if (!confirm("¿Estás seguro de que quieres eliminar esta ruta?")) return;
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.deleteRuta(id);
-    if (response.success) {
-      await cargarRutas();
-      renderizarRutas();
-      mostrarToast("¡Ruta eliminada con éxito!");
-    } else {
-      mostrarToast("Error al eliminar la ruta", "error");
-    }
-  } catch (error) {
-    console.error("Error al eliminar ruta:", error);
-    mostrarToast("Error al eliminar la ruta", "error");
-  } finally {
-    mostrarCargando(false);
-  }
+function guardarRutas() {
+  console.log("Rutas guardadas en memoria:", rutas.length, "elementos");
 }
 
 // Funciones para toast

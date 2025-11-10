@@ -1,11 +1,10 @@
-import apiService from '../../assets/JS/utils/apiService.js';
-
-let embarques = []; // Cache local para renderizado rápido
+let embarques = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-async function inicializarModulo() {
-  console.log("Inicializando módulo de embarques...");
-  await cargarEmbarques();
+function inicializarModulo() {
+  console.log("Inicializando módulo...");
+  // Mover el contenido de inicializar aquí
+
   renderizarEmbarques();
   configurarEventosGlobales();
 }
@@ -14,32 +13,8 @@ async function inicializarModulo() {
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", inicializarModulo);
 } else {
+  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
-}
-
-// Cargar embarques desde la API
-async function cargarEmbarques() {
-  try {
-    mostrarCargando(true);
-    const response = await apiService.getEmbarques(1, 100);
-    if (response.success) {
-      embarques = response.data.data || response.data || [];
-      console.log(`Cargados ${embarques.length} embarques desde la API`);
-    }
-  } catch (error) {
-    console.error("Error al cargar embarques:", error);
-    mostrarToast("Error al cargar los embarques", "error");
-    embarques = [];
-  } finally {
-    mostrarCargando(false);
-  }
-}
-
-function mostrarCargando(mostrar) {
-  const loader = document.getElementById("loader");
-  if (loader) {
-    loader.style.display = mostrar ? "block" : "none";
-  }
 }
 
 function renderizarEmbarques() {
@@ -289,12 +264,12 @@ function renderFilaEmbarque(embarque) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${
-                  embarque._id || embarque.id
+                  embarque.id
                 }">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                  embarque._id || embarque.id
+                  embarque.id
                 }">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -530,12 +505,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = editBtn.dataset.id;
+      const id = parseInt(editBtn.dataset.id);
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
+      const id = parseInt(deleteBtn.dataset.id);
       eliminarEmbarque(id);
     }
   });
@@ -725,14 +700,9 @@ function mostrarModalCrear() {
   mostrarModal("Nuevo Embarque", campos, crearEmbarque);
 }
 
-async function mostrarModalEditar(id) {
-  try {
-    const response = await apiService.getEmbarque(id);
-    if (!response.success) {
-      mostrarToast("Error al cargar el embarque", "error");
-      return;
-    }
-    const embarque = response.data;
+function mostrarModalEditar(id) {
+  const embarque = embarques.find((e) => e.id === id);
+  if (!embarque) return;
 
   // Extraer fecha y hora para el input date
   const [fechaPart, horaPart] = embarque.fechaEstimada.split(" - ");
@@ -741,7 +711,7 @@ async function mostrarModalEditar(id) {
 
   const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${embarque._id || embarque.id}">
+            <input type="hidden" id="edit-id" value="${embarque.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ID Embarque *</label>
                 <input type="text" id="edit-idEmbarque" value="${escapeHtml(
@@ -834,14 +804,10 @@ async function mostrarModalEditar(id) {
         </div>
     `;
 
-    mostrarModal("Editar Embarque", campos, editarEmbarque);
-  } catch (error) {
-    console.error("Error al cargar embarque:", error);
-    mostrarToast("Error al cargar el embarque", "error");
-  }
+  mostrarModal("Editar Embarque", campos, editarEmbarque);
 }
 
-async function crearEmbarque() {
+function crearEmbarque() {
   const idEmbarque = document.getElementById("create-idEmbarque")?.value.trim();
   const buque = document.getElementById("create-buque")?.value.trim();
   const imo = document.getElementById("create-imo")?.value.trim();
@@ -865,9 +831,10 @@ async function crearEmbarque() {
 
   // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy - HH:mm
   const [anio, mes, dia] = fechaInput.split("-");
-  const fechaEstimada = `${dia}/${mes}/${anio} - 08:30`;
+  const fechaEstimada = `${dia}/${mes}/${anio} - 08:30`; // Hora por defecto
 
   const nuevoEmbarque = {
+    id: Date.now(),
     idEmbarque: idEmbarque,
     buque: buque,
     imo: imo,
@@ -875,89 +842,66 @@ async function crearEmbarque() {
     destino: destino,
     fechaEstimada: fechaEstimada,
     teus: teus,
-    tipoCarga: document.getElementById("create-tipoCarga")?.value || "container",
+    tipoCarga:
+      document.getElementById("create-tipoCarga")?.value || "container",
     estado: document.getElementById("create-estado")?.value || "pending",
     distancia: document.getElementById("create-distancia")?.value || "0 nm",
   };
 
-  try {
-    mostrarCargando(true);
-    const response = await apiService.createEmbarque(nuevoEmbarque);
-    if (response.success) {
-      await cargarEmbarques();
-      renderizarEmbarques();
-      ocultarModal();
-      mostrarToast("¡Embarque creado con éxito!");
-    } else {
-      mostrarToast("Error al crear el embarque", "error");
-    }
-  } catch (error) {
-    console.error("Error al crear embarque:", error);
-    mostrarToast("Error al crear el embarque", "error");
-  } finally {
-    mostrarCargando(false);
+  embarques.push(nuevoEmbarque);
+  guardarEmbarques();
+  renderizarEmbarques();
+  ocultarModal();
+  mostrarToast("¡Embarque creado con éxito!");
+}
+
+function editarEmbarque() {
+  const id = parseInt(document.getElementById("edit-id")?.value);
+  const embarqueIndex = embarques.findIndex((e) => e.id === id);
+
+  if (embarqueIndex !== -1) {
+    const fechaInput = document.getElementById("edit-fecha")?.value;
+
+    // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy - HH:mm
+    const [anio, mes, dia] = fechaInput.split("-");
+    const fechaEstimada = `${dia}/${mes}/${anio} - 08:30`; // Mantener hora existente o usar por defecto
+
+    embarques[embarqueIndex] = {
+      ...embarques[embarqueIndex],
+      idEmbarque:
+        document.getElementById("edit-idEmbarque")?.value.trim() || "",
+      buque: document.getElementById("edit-buque")?.value.trim() || "",
+      imo: document.getElementById("edit-imo")?.value.trim() || "",
+      origen: document.getElementById("edit-origen")?.value.trim() || "",
+      destino: document.getElementById("edit-destino")?.value.trim() || "",
+      fechaEstimada: fechaEstimada,
+      teus: parseInt(document.getElementById("edit-teus")?.value) || 0,
+      tipoCarga:
+        document.getElementById("edit-tipoCarga")?.value || "container",
+      estado: document.getElementById("edit-estado")?.value || "pending",
+      distancia: document.getElementById("edit-distancia")?.value || "0 nm",
+    };
+
+    guardarEmbarques();
+    renderizarEmbarques();
+    ocultarModal();
+    mostrarToast("¡Embarque actualizado con éxito!");
   }
 }
 
-async function editarEmbarque() {
-  const id = document.getElementById("edit-id")?.value;
-  if (!id) return;
-
-  const fechaInput = document.getElementById("edit-fecha")?.value;
-  const [anio, mes, dia] = fechaInput.split("-");
-  const fechaEstimada = `${dia}/${mes}/${anio} - 08:30`;
-
-  const embarqueActualizado = {
-    idEmbarque: document.getElementById("edit-idEmbarque")?.value.trim() || "",
-    buque: document.getElementById("edit-buque")?.value.trim() || "",
-    imo: document.getElementById("edit-imo")?.value.trim() || "",
-    origen: document.getElementById("edit-origen")?.value.trim() || "",
-    destino: document.getElementById("edit-destino")?.value.trim() || "",
-    fechaEstimada: fechaEstimada,
-    teus: parseInt(document.getElementById("edit-teus")?.value) || 0,
-    tipoCarga: document.getElementById("edit-tipoCarga")?.value || "container",
-    estado: document.getElementById("edit-estado")?.value || "pending",
-    distancia: document.getElementById("edit-distancia")?.value || "0 nm",
-  };
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.updateEmbarque(id, embarqueActualizado);
-    if (response.success) {
-      await cargarEmbarques();
-      renderizarEmbarques();
-      ocultarModal();
-      mostrarToast("¡Embarque actualizado con éxito!");
-    } else {
-      mostrarToast("Error al actualizar el embarque", "error");
-    }
-  } catch (error) {
-    console.error("Error al actualizar embarque:", error);
-    mostrarToast("Error al actualizar el embarque", "error");
-  } finally {
-    mostrarCargando(false);
+function eliminarEmbarque(id) {
+  if (confirm("¿Estás seguro de que quieres eliminar este embarque?")) {
+    embarques = embarques.filter((e) => e.id !== id);
+    guardarEmbarques();
+    renderizarEmbarques();
+    mostrarToast("¡Embarque eliminado con éxito!");
   }
 }
 
-async function eliminarEmbarque(id) {
-  if (!confirm("¿Estás seguro de que quieres eliminar este embarque?")) return;
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.deleteEmbarque(id);
-    if (response.success) {
-      await cargarEmbarques();
-      renderizarEmbarques();
-      mostrarToast("¡Embarque eliminado con éxito!");
-    } else {
-      mostrarToast("Error al eliminar el embarque", "error");
-    }
-  } catch (error) {
-    console.error("Error al eliminar embarque:", error);
-    mostrarToast("Error al eliminar el embarque", "error");
-  } finally {
-    mostrarCargando(false);
-  }
+function guardarEmbarques() {
+  // Los datos se mantienen en el arreglo embarques en memoria
+  // No se usa localStorage, los datos persisten durante la sesión
+  console.log("Embarques guardados en memoria:", embarques.length, "elementos");
 }
 
 // Funciones para toast
