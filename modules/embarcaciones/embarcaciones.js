@@ -1,37 +1,8 @@
-import apiService from '../../assets/JS/utils/apiService.js';
+let embarcaciones = [];
 
-let embarcaciones = []; // Cache local para renderizado rápido
-
-async function inicializar() {
-  console.log("Inicializando módulo de embarcaciones...");
-  await cargarEmbarcaciones();
+function inicializar() {
   renderizarEmbarcaciones();
   configurarEventosGlobales();
-}
-
-// Cargar embarcaciones desde la API
-async function cargarEmbarcaciones() {
-  try {
-    mostrarCargando(true);
-    const response = await apiService.getEmbarcaciones(1, 100);
-    if (response.success) {
-      embarcaciones = response.data.data || response.data || [];
-      console.log(`Cargadas ${embarcaciones.length} embarcaciones desde la API`);
-    }
-  } catch (error) {
-    console.error("Error al cargar embarcaciones:", error);
-    mostrarToast("Error al cargar las embarcaciones", "error");
-    embarcaciones = [];
-  } finally {
-    mostrarCargando(false);
-  }
-}
-
-function mostrarCargando(mostrar) {
-  const loader = document.getElementById("loader");
-  if (loader) {
-    loader.style.display = mostrar ? "block" : "none";
-  }
 }
 
 function renderizarEmbarcaciones() {
@@ -327,12 +298,12 @@ function renderFilaEmbarcacion(embarcacion) {
         <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
             <div class="flex justify-center space-x-2">
                 <button class="text-blue-600 hover:text-blue-800 edit-btn" data-id="${
-                  embarcacion._id || embarcacion.id
+                  embarcacion.id
                 }">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                  embarcacion._id || embarcacion.id
+                  embarcacion.id
                 }">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -592,12 +563,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = editBtn.dataset.id;
+      const id = parseInt(editBtn.dataset.id);
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
+      const id = parseInt(deleteBtn.dataset.id);
       eliminarEmbarcacion(id);
     }
   });
@@ -771,14 +742,9 @@ function mostrarModalCrear() {
   mostrarModal("Nueva Embarcación", campos, crearEmbarcacion);
 }
 
-async function mostrarModalEditar(id) {
-  try {
-    const response = await apiService.getEmbarcacion(id);
-    if (!response.success) {
-      mostrarToast("Error al cargar la embarcación", "error");
-      return;
-    }
-    const embarcacion = response.data;
+function mostrarModalEditar(id) {
+  const embarcacion = embarcaciones.find((e) => e.id === id);
+  if (!embarcacion) return;
 
   // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
   const [dia, mes, anio] = embarcacion.fecha.split("/");
@@ -786,7 +752,7 @@ async function mostrarModalEditar(id) {
 
   const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${embarcacion._id || embarcacion.id}">
+            <input type="hidden" id="edit-id" value="${embarcacion.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input type="text" id="edit-nombre" value="${escapeHtml(
@@ -864,14 +830,10 @@ async function mostrarModalEditar(id) {
         </div>
     `;
 
-    mostrarModal("Editar Embarcación", campos, editarEmbarcacion);
-  } catch (error) {
-    console.error("Error al cargar embarcación:", error);
-    mostrarToast("Error al cargar la embarcación", "error");
-  }
+  mostrarModal("Editar Embarcación", campos, editarEmbarcacion);
 }
 
-async function crearEmbarcacion() {
+function crearEmbarcacion() {
   const nombre = document.getElementById("create-nombre")?.value.trim();
   const imo = document.getElementById("create-imo")?.value.trim();
   const origen = document.getElementById("create-origen")?.value.trim();
@@ -888,92 +850,73 @@ async function crearEmbarcacion() {
   const fecha = `${dia}/${mes}/${anio}`;
 
   const nuevaEmbarcacion = {
+    id: Date.now(),
     nombre: nombre,
     imo: imo,
     origen: origen,
     destino: destino,
     fecha: fecha,
-    capacidad: document.getElementById("create-capacidad")?.value.trim() || "N/A",
+    capacidad:
+      document.getElementById("create-capacidad")?.value.trim() || "N/A",
     tipo: document.getElementById("create-tipo")?.value || "container",
     estado: document.getElementById("create-estado")?.value || "pending",
   };
 
-  try {
-    mostrarCargando(true);
-    const response = await apiService.createEmbarcacion(nuevaEmbarcacion);
-    if (response.success) {
-      await cargarEmbarcaciones();
-      renderizarEmbarcaciones();
-      ocultarModal();
-      mostrarToast("¡Embarcación creada con éxito!");
-    } else {
-      mostrarToast("Error al crear la embarcación", "error");
-    }
-  } catch (error) {
-    console.error("Error al crear embarcación:", error);
-    mostrarToast("Error al crear la embarcación", "error");
-  } finally {
-    mostrarCargando(false);
+  embarcaciones.push(nuevaEmbarcacion);
+  guardarEmbarcaciones();
+  renderizarEmbarcaciones();
+  ocultarModal();
+  mostrarToast("¡Embarcación creada con éxito!");
+}
+
+function editarEmbarcacion() {
+  const id = parseInt(document.getElementById("edit-id")?.value);
+  const embarcacionIndex = embarcaciones.findIndex((e) => e.id === id);
+
+  if (embarcacionIndex !== -1) {
+    const fechaInput = document.getElementById("edit-fecha")?.value;
+
+    // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
+    const [anio, mes, dia] = fechaInput.split("-");
+    const fecha = `${dia}/${mes}/${anio}`;
+
+    embarcaciones[embarcacionIndex] = {
+      ...embarcaciones[embarcacionIndex],
+      nombre: document.getElementById("edit-nombre")?.value.trim() || "",
+      imo: document.getElementById("edit-imo")?.value.trim() || "",
+      origen: document.getElementById("edit-origen")?.value.trim() || "",
+      destino: document.getElementById("edit-destino")?.value.trim() || "",
+      fecha: fecha,
+      capacidad:
+        document.getElementById("edit-capacidad")?.value.trim() || "N/A",
+      tipo: document.getElementById("edit-tipo")?.value || "container",
+      estado: document.getElementById("edit-estado")?.value || "pending",
+    };
+
+    guardarEmbarcaciones();
+    renderizarEmbarcaciones();
+    ocultarModal();
+    mostrarToast("¡Embarcación actualizada con éxito!");
   }
 }
 
-async function editarEmbarcacion() {
-  const id = document.getElementById("edit-id")?.value;
-  if (!id) return;
-
-  const fechaInput = document.getElementById("edit-fecha")?.value;
-  const [anio, mes, dia] = fechaInput.split("-");
-  const fecha = `${dia}/${mes}/${anio}`;
-
-  const embarcacionActualizada = {
-    nombre: document.getElementById("edit-nombre")?.value.trim() || "",
-    imo: document.getElementById("edit-imo")?.value.trim() || "",
-    origen: document.getElementById("edit-origen")?.value.trim() || "",
-    destino: document.getElementById("edit-destino")?.value.trim() || "",
-    fecha: fecha,
-    capacidad: document.getElementById("edit-capacidad")?.value.trim() || "N/A",
-    tipo: document.getElementById("edit-tipo")?.value || "container",
-    estado: document.getElementById("edit-estado")?.value || "pending",
-  };
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.updateEmbarcacion(id, embarcacionActualizada);
-    if (response.success) {
-      await cargarEmbarcaciones();
-      renderizarEmbarcaciones();
-      ocultarModal();
-      mostrarToast("¡Embarcación actualizada con éxito!");
-    } else {
-      mostrarToast("Error al actualizar la embarcación", "error");
-    }
-  } catch (error) {
-    console.error("Error al actualizar embarcación:", error);
-    mostrarToast("Error al actualizar la embarcación", "error");
-  } finally {
-    mostrarCargando(false);
+function eliminarEmbarcacion(id) {
+  if (confirm("¿Estás seguro de que quieres eliminar esta embarcación?")) {
+    embarcaciones = embarcaciones.filter((e) => e.id !== id);
+    guardarEmbarcaciones();
+    renderizarEmbarcaciones();
+    mostrarToast("¡Embarcación eliminada con éxito!");
   }
 }
 
-async function eliminarEmbarcacion(id) {
-  if (!confirm("¿Estás seguro de que quieres eliminar esta embarcación?")) return;
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.deleteEmbarcacion(id);
-    if (response.success) {
-      await cargarEmbarcaciones();
-      renderizarEmbarcaciones();
-      mostrarToast("¡Embarcación eliminada con éxito!");
-    } else {
-      mostrarToast("Error al eliminar la embarcación", "error");
-    }
-  } catch (error) {
-    console.error("Error al eliminar embarcación:", error);
-    mostrarToast("Error al eliminar la embarcación", "error");
-  } finally {
-    mostrarCargando(false);
-  }
+function guardarEmbarcaciones() {
+  // Los datos se mantienen en el arreglo embarcaciones en memoria
+  // No se usa localStorage, los datos persisten durante la sesión
+  console.log(
+    "Embarcaciones guardadas en memoria:",
+    embarcaciones.length,
+    "elementos"
+  );
 }
 
 // Funciones para toast

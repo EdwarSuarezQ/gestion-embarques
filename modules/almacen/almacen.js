@@ -1,39 +1,10 @@
-import apiService from '../../assets/JS/utils/apiService.js';
+let almacenes = [];
 
-let almacenes = []; // Cache local para renderizado rápido
-
-async function inicializar() {
-  console.log("Inicializando módulo de almacenes...");
-  await cargarAlmacenes();
+function inicializar() {
   renderizarAlmacenes();
   configurarEventosGlobales();
   actualizarEstadisticas();
   actualizarPanelesInferiores();
-}
-
-// Cargar almacenes desde la API
-async function cargarAlmacenes() {
-  try {
-    mostrarCargando(true);
-    const response = await apiService.getAlmacenes(1, 100);
-    if (response.success) {
-      almacenes = response.data.data || response.data || [];
-      console.log(`Cargados ${almacenes.length} almacenes desde la API`);
-    }
-  } catch (error) {
-    console.error("Error al cargar almacenes:", error);
-    mostrarToast("Error al cargar los almacenes", "error");
-    almacenes = [];
-  } finally {
-    mostrarCargando(false);
-  }
-}
-
-function mostrarCargando(mostrar) {
-  const loader = document.getElementById("loader");
-  if (loader) {
-    loader.style.display = mostrar ? "block" : "none";
-  }
 }
 
 function renderizarAlmacenes() {
@@ -104,12 +75,12 @@ function generarFilaTabla(almacen) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${
-                  almacen._id || almacen.id
+                  almacen.id
                 }" title="Editar almacén">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                  almacen._id || almacen.id
+                  almacen.id
                 }" title="Eliminar almacén">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -329,12 +300,12 @@ function configurarEventosGlobales() {
     const deleteBtn = e.target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = editBtn.dataset.id;
+      const id = parseInt(editBtn.dataset.id);
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
+      const id = parseInt(deleteBtn.dataset.id);
       eliminarAlmacen(id);
     }
   });
@@ -498,14 +469,9 @@ function mostrarModalCrear() {
   mostrarModal("Nuevo Almacén", campos, crearAlmacen);
 }
 
-async function mostrarModalEditar(id) {
-  try {
-    const response = await apiService.getAlmacen(id);
-    if (!response.success) {
-      mostrarToast("Error al cargar el almacén", "error");
-      return;
-    }
-    const almacen = response.data;
+function mostrarModalEditar(id) {
+  const almacen = almacenes.find((a) => a.id === id);
+  if (!almacen) return;
 
   // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
   const fechaMantenimiento = almacen.proximoMantenimiento
@@ -514,7 +480,7 @@ async function mostrarModalEditar(id) {
 
   const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${almacen._id || almacen.id}">
+            <input type="hidden" id="edit-id" value="${almacen.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input type="text" id="edit-nombre" value="${escapeHtml(
@@ -564,19 +530,21 @@ async function mostrarModalEditar(id) {
         </div>
     `;
 
-    mostrarModal("Editar Almacén", campos, editarAlmacen);
-  } catch (error) {
-    console.error("Error al cargar almacén:", error);
-    mostrarToast("Error al cargar el almacén", "error");
-  }
+  mostrarModal("Editar Almacén", campos, editarAlmacen);
 }
 
-async function crearAlmacen() {
+function crearAlmacen() {
   const nombre = document.getElementById("create-nombre")?.value.trim();
   const ubicacion = document.getElementById("create-ubicacion")?.value.trim();
-  const capacidad = parseInt(document.getElementById("create-capacidad")?.value);
-  const ocupacion = parseInt(document.getElementById("create-ocupacion")?.value);
-  const mantenimientoInput = document.getElementById("create-mantenimiento")?.value;
+  const capacidad = parseInt(
+    document.getElementById("create-capacidad")?.value
+  );
+  const ocupacion = parseInt(
+    document.getElementById("create-ocupacion")?.value
+  );
+  const mantenimientoInput = document.getElementById(
+    "create-mantenimiento"
+  )?.value;
 
   if (!nombre || !ubicacion || isNaN(capacidad) || isNaN(ocupacion)) {
     mostrarToast("Por favor complete todos los campos obligatorios", "error");
@@ -591,6 +559,7 @@ async function crearAlmacen() {
   }
 
   const nuevoAlmacen = {
+    id: Date.now(),
     nombre: nombre,
     ubicacion: ubicacion,
     capacidad: capacidad,
@@ -599,91 +568,66 @@ async function crearAlmacen() {
     proximoMantenimiento: proximoMantenimiento,
   };
 
-  try {
-    mostrarCargando(true);
-    const response = await apiService.createAlmacen(nuevoAlmacen);
-    if (response.success) {
-      await cargarAlmacenes();
-      renderizarAlmacenes();
-      actualizarEstadisticas();
-      actualizarPanelesInferiores();
-      ocultarModal();
-      mostrarToast("¡Almacén creado con éxito!");
-    } else {
-      mostrarToast("Error al crear el almacén", "error");
+  almacenes.push(nuevoAlmacen);
+  guardarAlmacenes();
+  renderizarAlmacenes();
+  actualizarEstadisticas();
+  actualizarPanelesInferiores();
+  ocultarModal();
+  mostrarToast("¡Almacén creado con éxito!");
+}
+
+function editarAlmacen() {
+  const id = parseInt(document.getElementById("edit-id")?.value);
+  const almacenIndex = almacenes.findIndex((a) => a.id === id);
+
+  if (almacenIndex !== -1) {
+    const mantenimientoInput =
+      document.getElementById("edit-mantenimiento")?.value;
+
+    // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
+    let proximoMantenimiento = "";
+    if (mantenimientoInput) {
+      const [anio, mes, dia] = mantenimientoInput.split("-");
+      proximoMantenimiento = `${dia}/${mes}/${anio}`;
     }
-  } catch (error) {
-    console.error("Error al crear almacén:", error);
-    mostrarToast("Error al crear el almacén", "error");
-  } finally {
-    mostrarCargando(false);
+
+    almacenes[almacenIndex] = {
+      ...almacenes[almacenIndex],
+      nombre: document.getElementById("edit-nombre")?.value.trim() || "",
+      ubicacion: document.getElementById("edit-ubicacion")?.value.trim() || "",
+      capacidad:
+        parseInt(document.getElementById("edit-capacidad")?.value) || 0,
+      ocupacion:
+        parseInt(document.getElementById("edit-ocupacion")?.value) || 0,
+      estado: document.getElementById("edit-estado")?.value || "operativo",
+      proximoMantenimiento: proximoMantenimiento,
+    };
+
+    guardarAlmacenes();
+    renderizarAlmacenes();
+    actualizarEstadisticas();
+    actualizarPanelesInferiores();
+    ocultarModal();
+    mostrarToast("¡Almacén actualizado con éxito!");
   }
 }
 
-async function editarAlmacen() {
-  const id = document.getElementById("edit-id")?.value;
-  if (!id) return;
-
-  const mantenimientoInput = document.getElementById("edit-mantenimiento")?.value;
-
-  // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
-  let proximoMantenimiento = "";
-  if (mantenimientoInput) {
-    const [anio, mes, dia] = mantenimientoInput.split("-");
-    proximoMantenimiento = `${dia}/${mes}/${anio}`;
-  }
-
-  const almacenActualizado = {
-    nombre: document.getElementById("edit-nombre")?.value.trim() || "",
-    ubicacion: document.getElementById("edit-ubicacion")?.value.trim() || "",
-    capacidad: parseInt(document.getElementById("edit-capacidad")?.value) || 0,
-    ocupacion: parseInt(document.getElementById("edit-ocupacion")?.value) || 0,
-    estado: document.getElementById("edit-estado")?.value || "operativo",
-    proximoMantenimiento: proximoMantenimiento,
-  };
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.updateAlmacen(id, almacenActualizado);
-    if (response.success) {
-      await cargarAlmacenes();
-      renderizarAlmacenes();
-      actualizarEstadisticas();
-      actualizarPanelesInferiores();
-      ocultarModal();
-      mostrarToast("¡Almacén actualizado con éxito!");
-    } else {
-      mostrarToast("Error al actualizar el almacén", "error");
-    }
-  } catch (error) {
-    console.error("Error al actualizar almacén:", error);
-    mostrarToast("Error al actualizar el almacén", "error");
-  } finally {
-    mostrarCargando(false);
+function eliminarAlmacen(id) {
+  if (confirm("¿Estás seguro de que quieres eliminar este almacén?")) {
+    almacenes = almacenes.filter((a) => a.id !== id);
+    guardarAlmacenes();
+    renderizarAlmacenes();
+    actualizarEstadisticas();
+    actualizarPanelesInferiores();
+    mostrarToast("¡Almacén eliminado con éxito!");
   }
 }
 
-async function eliminarAlmacen(id) {
-  if (!confirm("¿Estás seguro de que quieres eliminar este almacén?")) return;
-
-  try {
-    mostrarCargando(true);
-    const response = await apiService.deleteAlmacen(id);
-    if (response.success) {
-      await cargarAlmacenes();
-      renderizarAlmacenes();
-      actualizarEstadisticas();
-      actualizarPanelesInferiores();
-      mostrarToast("¡Almacén eliminado con éxito!");
-    } else {
-      mostrarToast("Error al eliminar el almacén", "error");
-    }
-  } catch (error) {
-    console.error("Error al eliminar almacén:", error);
-    mostrarToast("Error al eliminar el almacén", "error");
-  } finally {
-    mostrarCargando(false);
-  }
+function guardarAlmacenes() {
+  // Los datos se mantienen en el arreglo almacenes en memoria
+  // No se usa localStorage, los datos persisten durante la sesión
+  console.log("Almacenes guardados en memoria:", almacenes.length, "elementos");
 }
 
 // Funciones para toast
