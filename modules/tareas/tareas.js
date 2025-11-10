@@ -1,11 +1,12 @@
-let tareas = [];
-let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
+import apiService from '../../assets/JS/utils/apiService.js';
+
+let tareas = []; // Cache local para renderizado rápido
+let flatpickrInstances = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
+async function inicializarModulo() {
+  console.log("Inicializando módulo de tareas...");
+  await cargarTareas();
   renderizarTareas();
   configurarEventosGlobales();
 }
@@ -14,8 +15,32 @@ function inicializarModulo() {
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", inicializarModulo);
 } else {
-  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
+}
+
+// Cargar tareas desde la API
+async function cargarTareas() {
+  try {
+    mostrarCargando(true);
+    const response = await apiService.getTareas(1, 100);
+    if (response.success) {
+      tareas = response.data.data || response.data || [];
+      console.log(`Cargadas ${tareas.length} tareas desde la API`);
+    }
+  } catch (error) {
+    console.error("Error al cargar tareas:", error);
+    mostrarToast("Error al cargar las tareas", "error");
+    tareas = [];
+  } finally {
+    mostrarCargando(false);
+  }
+}
+
+function mostrarCargando(mostrar) {
+  const loader = document.getElementById("loader");
+  if (loader) {
+    loader.style.display = mostrar ? "block" : "none";
+  }
 }
 
 function renderizarTareas() {
@@ -25,10 +50,8 @@ function renderizarTareas() {
     return;
   }
 
-  // Crear estructura completa del módulo
   moduleContent.innerHTML = crearEstructuraCompleta();
 
-  // Renderizar los componentes después de crear la estructura
   setTimeout(() => {
     renderizarTablaTareas();
     actualizarEstadisticas();
@@ -38,33 +61,16 @@ function renderizarTareas() {
 
 function crearEstructuraCompleta() {
   const tareasPendientes = tareas.filter((t) => t.estado === "pending").length;
-  const tareasCompletadas = tareas.filter(
-    (t) => t.estado === "completed"
-  ).length;
-  const eficiencia =
-    tareas.length > 0
-      ? Math.round((tareasCompletadas / tareas.length) * 100)
-      : 0;
-  const tareasAltaPrioridad = tareas.filter(
-    (t) => t.prioridad === "high"
-  ).length;
-
-  // Calcular porcentajes con protección contra división por cero
-  const porcentajePendientes =
-    tareas.length > 0
-      ? Math.round((tareasPendientes / tareas.length) * 100)
-      : 0;
-  const porcentajeAltaPrioridad =
-    tareas.length > 0
-      ? Math.round((tareasAltaPrioridad / tareas.length) * 100)
-      : 0;
-  //calcula el porcentaje de la semana pasada
-  const eficienciaSemanaPasada = 72; // valor que guardas de la semana pasada
+  const tareasCompletadas = tareas.filter((t) => t.estado === "completed").length;
+  const eficiencia = tareas.length > 0 ? Math.round((tareasCompletadas / tareas.length) * 100) : 0;
+  const tareasAltaPrioridad = tareas.filter((t) => t.prioridad === "high").length;
+  const porcentajePendientes = tareas.length > 0 ? Math.round((tareasPendientes / tareas.length) * 100) : 0;
+  const porcentajeAltaPrioridad = tareas.length > 0 ? Math.round((tareasAltaPrioridad / tareas.length) * 100) : 0;
+  const eficienciaSemanaPasada = 72;
   const diferencia = eficiencia - eficienciaSemanaPasada;
 
   return `
     <div class="tareas-module">    
-        <!-- Estadísticas -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-blue-500">
                 <div class="flex justify-between items-start">
@@ -81,7 +87,6 @@ function crearEstructuraCompleta() {
                     del total
                 </div>
             </div>
-
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-green-500">
                 <div class="flex justify-between items-start">
                     <div>
@@ -97,7 +102,6 @@ function crearEstructuraCompleta() {
                     desde la semana pasada
                 </div>
             </div>
-
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-red-500">
                 <div class="flex justify-between items-start">
                     <div>
@@ -114,8 +118,6 @@ function crearEstructuraCompleta() {
                 </div>
             </div>
         </div>
-
-        <!-- Tabla de tareas -->
         <div class="bg-white rounded-lg shadow-md mb-6">
             <div class="p-4 border-b border-gray-200">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -159,37 +161,23 @@ function crearEstructuraCompleta() {
                         </tr>
                     </thead>
                     <tbody id="tareas-table-body" class="bg-white divide-y divide-gray-200">
-                        <!-- Las tareas se cargarán aquí dinámicamente -->
                     </tbody>
                 </table>
             </div>
         </div>
-
-        <!-- Paneles inferiores -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white rounded-lg shadow-md p-5">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-800">Tareas por Estado</h2>
-                    <div class="text-sm text-gray-500">
-                        <select class="border-none text-sm">
-                            <option>Este Mes</option>
-                            <option>Este Trimestre</option>
-                            <option>Este Año</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="space-y-4" id="estadisticas-estado">
-                    <!-- Las estadísticas se cargarán dinámicamente -->
                 </div>
             </div>
-
             <div class="bg-white rounded-lg shadow-md p-5">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-800">Próximas Tareas</h2>
-                    <a href="javascript:void(0)" class="text-blue-600 hover:text-blue-800 text-sm">Ver todas</a>
                 </div>
                 <div class="space-y-3" id="proximas-tareas">
-                    <!-- Las próximas tareas se cargarán dinámicamente -->
                 </div>
             </div>
         </div>
@@ -199,74 +187,51 @@ function crearEstructuraCompleta() {
 
 function renderizarTablaTareas() {
   const tableBody = document.getElementById("tareas-table-body");
-  if (!tableBody) {
-    console.error("No se encontró el table body para tareas");
-    return;
-  }
+  if (!tableBody) return;
 
   tableBody.innerHTML = tareas
-    .map(
-      (tarea) => `
+    .map((tarea) => `
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                      tarea.titulo
-                    )}</div>
-                    <div class="text-sm text-gray-500">${escapeHtml(
-                      tarea.descripcion
-                    )}</div>
+                    <div class="text-sm font-medium text-gray-900">${escapeHtml(tarea.titulo)}</div>
+                    <div class="text-sm text-gray-500">${escapeHtml(tarea.descripcion || "")}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
-                        <div class="h-8 w-8 rounded-full ${getColorIniciales(
-                          tarea.asignado
-                        )} flex items-center justify-center text-white font-medium text-sm">
+                        <div class="h-8 w-8 rounded-full ${getColorIniciales(tarea.asignado)} flex items-center justify-center text-white font-medium text-sm">
                             ${getIniciales(tarea.asignado)}
                         </div>
                         <div class="ml-3">
-                            <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                              tarea.asignado
-                            )}</div>
-                            <div class="text-sm text-gray-500">${
-                              tarea.departamento
-                            }</div>
+                            <div class="text-sm font-medium text-gray-900">${escapeHtml(tarea.asignado || "")}</div>
+                            <div class="text-sm text-gray-500">${tarea.departamento || ""}</div>
                         </div>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">${tarea.fecha}</div>
-                    <div class="text-xs text-gray-500">${calcularDiasRestantes(
-                      tarea.fecha
-                    )}</div>
+                    <div class="text-xs text-gray-500">${calcularDiasRestantes(tarea.fecha)}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        ${tarea.departamento}
+                        ${tarea.departamento || ""}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${getBadgePrioridad(tarea.prioridad)}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="status-badge status-${
-                      tarea.estado
-                    } border">${getEstadoText(tarea.estado)}</span>
+                    <span class="status-badge status-${tarea.estado} border">${getEstadoText(tarea.estado)}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${
-                      tarea.id
-                    }">
+                    <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${tarea._id || tarea.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                      tarea.id
-                    }">
+                    <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${tarea._id || tarea.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             </tr>
-        `
-    )
+        `)
     .join("");
 }
 
@@ -280,48 +245,27 @@ function actualizarEstadisticasEstado() {
   if (!container) return;
 
   const estados = {
-    "in-progress": {
-      nombre: "En progreso",
-      color: "blue",
-      cantidad: tareas.filter((t) => t.estado === "in-progress").length,
-    },
-    completed: {
-      nombre: "Completadas",
-      color: "green",
-      cantidad: tareas.filter((t) => t.estado === "completed").length,
-    },
-    pending: {
-      nombre: "Pendientes",
-      color: "yellow",
-      cantidad: tareas.filter((t) => t.estado === "pending").length,
-    },
+    "in-progress": { nombre: "En progreso", color: "blue", cantidad: tareas.filter((t) => t.estado === "in-progress").length },
+    completed: { nombre: "Completadas", color: "green", cantidad: tareas.filter((t) => t.estado === "completed").length },
+    pending: { nombre: "Pendientes", color: "yellow", cantidad: tareas.filter((t) => t.estado === "pending").length },
   };
 
   const total = tareas.length;
-
   container.innerHTML = Object.values(estados)
-    .map(
-      (estado) => `
+    .map((estado) => `
             <div>
                 <div class="flex justify-between text-sm mb-1">
                     <span class="flex items-center">
-                        <span class="w-3 h-3 bg-${
-                          estado.color
-                        }-500 rounded-full mr-2"></span>
+                        <span class="w-3 h-3 bg-${estado.color}-500 rounded-full mr-2"></span>
                         ${estado.nombre}
                     </span>
                     <span>${estado.cantidad} tareas</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-${
-                      estado.color
-                    }-500 h-2 rounded-full" style="width: ${
-        total > 0 ? (estado.cantidad / total) * 100 : 0
-      }%"></div>
+                    <div class="bg-${estado.color}-500 h-2 rounded-full" style="width: ${total > 0 ? (estado.cantidad / total) * 100 : 0}%"></div>
                 </div>
             </div>
-        `
-    )
+        `)
     .join("");
 }
 
@@ -329,71 +273,41 @@ function actualizarProximasTareas() {
   const container = document.getElementById("proximas-tareas");
   if (!container) return;
 
-  const proximas = tareas
-    .filter((t) => t.estado === "pending" || t.estado === "in-progress")
-    .slice(0, 4);
-
+  const proximas = tareas.filter((t) => t.estado === "pending" || t.estado === "in-progress").slice(0, 4);
   container.innerHTML = proximas
-    .map(
-      (tarea) => `
+    .map((tarea) => `
             <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
-                <div class="h-10 w-10 rounded-full ${getColorPrioridad(
-                  tarea.prioridad
-                )} flex items-center justify-center text-white mr-3">
+                <div class="h-10 w-10 rounded-full ${getColorPrioridad(tarea.prioridad)} flex items-center justify-center text-white mr-3">
                     <i class="fas fa-tasks"></i>
                 </div>
                 <div class="flex-1">
-                    <h3 class="text-sm font-medium">${escapeHtml(
-                      tarea.titulo
-                    )}</h3>
-                    <p class="text-xs text-gray-500">${tarea.fecha} - ${
-        tarea.asignado
-      }</p>
+                    <h3 class="text-sm font-medium">${escapeHtml(tarea.titulo)}</h3>
+                    <p class="text-xs text-gray-500">${tarea.fecha} - ${tarea.asignado}</p>
                 </div>
-                <span class="status-badge status-${
-                  tarea.estado
-                } border">${getEstadoText(tarea.estado)}</span>
+                <span class="status-badge status-${tarea.estado} border">${getEstadoText(tarea.estado)}</span>
             </div>
-        `
-    )
+        `)
     .join("");
 }
 
 function configurarEventosGlobales() {
-  // Configurar eventos del modal
   const modal = document.getElementById("modal");
   const modalClose = document.getElementById("modal-close");
   const modalCancel = document.getElementById("modal-cancel");
 
-  if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
-  }
-
-  if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
-  }
-
-  // Cerrar modal al hacer clic fuera
+  if (modalClose) modalClose.addEventListener("click", ocultarModal);
+  if (modalCancel) modalCancel.addEventListener("click", ocultarModal);
   if (modal) {
     modal.addEventListener("click", function (e) {
-      if (e.target === modal) {
-        ocultarModal();
-      }
+      if (e.target === modal) ocultarModal();
     });
   }
 
-  // Configurar toast
   const toastClose = document.getElementById("toast-close");
-  if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
-  }
+  if (toastClose) toastClose.addEventListener("click", ocultarToast);
 
-  // Usar event delegation para el botón de nueva tarea
   document.addEventListener("click", function (e) {
-    if (
-      e.target.id === "btn-nueva-tarea" ||
-      e.target.closest("#btn-nueva-tarea")
-    ) {
+    if (e.target.id === "btn-nueva-tarea" || e.target.closest("#btn-nueva-tarea")) {
       mostrarModalCrear();
     }
   });
@@ -403,65 +317,46 @@ function configurarEventosTabla() {
   const tableBody = document.getElementById("tareas-table-body");
   if (!tableBody) return;
 
-  // Usar event delegation para los botones de editar y eliminar
   tableBody.addEventListener("click", (e) => {
     const target = e.target;
     const editBtn = target.closest(".edit-btn");
     const deleteBtn = target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarTarea(id);
     }
   });
 
-  // Configurar filtros
   const filtroEstado = document.getElementById("filtro-estado");
   const filtroPrioridad = document.getElementById("filtro-prioridad");
   const buscarTareas = document.getElementById("buscar-tareas");
 
-  if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
-  }
-  if (filtroPrioridad) {
-    filtroPrioridad.addEventListener("change", aplicarFiltros);
-  }
-  if (buscarTareas) {
-    buscarTareas.addEventListener("input", aplicarFiltros);
-  }
+  if (filtroEstado) filtroEstado.addEventListener("change", aplicarFiltros);
+  if (filtroPrioridad) filtroPrioridad.addEventListener("change", aplicarFiltros);
+  if (buscarTareas) buscarTareas.addEventListener("input", aplicarFiltros);
 }
 
 function aplicarFiltros() {
   const filtroEstado = document.getElementById("filtro-estado")?.value;
   const filtroPrioridad = document.getElementById("filtro-prioridad")?.value;
-  const textoBusqueda = document
-    .getElementById("buscar-tareas")
-    ?.value.toLowerCase();
+  const textoBusqueda = document.getElementById("buscar-tareas")?.value.toLowerCase();
 
   let tareasFiltradas = tareas;
 
-  if (filtroEstado) {
-    tareasFiltradas = tareasFiltradas.filter((t) => t.estado === filtroEstado);
-  }
-
-  if (filtroPrioridad) {
-    tareasFiltradas = tareasFiltradas.filter(
-      (t) => t.prioridad === filtroPrioridad
-    );
-  }
-
+  if (filtroEstado) tareasFiltradas = tareasFiltradas.filter((t) => t.estado === filtroEstado);
+  if (filtroPrioridad) tareasFiltradas = tareasFiltradas.filter((t) => t.prioridad === filtroPrioridad);
   if (textoBusqueda) {
-    tareasFiltradas = tareasFiltradas.filter(
-      (t) =>
-        t.titulo.toLowerCase().includes(textoBusqueda) ||
-        t.descripcion.toLowerCase().includes(textoBusqueda) ||
-        t.asignado.toLowerCase().includes(textoBusqueda) ||
-        t.departamento.toLowerCase().includes(textoBusqueda)
+    tareasFiltradas = tareasFiltradas.filter((t) =>
+      t.titulo.toLowerCase().includes(textoBusqueda) ||
+      (t.descripcion && t.descripcion.toLowerCase().includes(textoBusqueda)) ||
+      (t.asignado && t.asignado.toLowerCase().includes(textoBusqueda)) ||
+      (t.departamento && t.departamento.toLowerCase().includes(textoBusqueda))
     );
   }
 
@@ -473,75 +368,53 @@ function renderizarTablaFiltrada(tareasFiltradas) {
   if (!tableBody) return;
 
   tableBody.innerHTML = tareasFiltradas
-    .map((tarea) => renderFilaTarea(tarea))
+    .map((tarea) => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${escapeHtml(tarea.titulo)}</div>
+                    <div class="text-sm text-gray-500">${escapeHtml(tarea.descripcion || "")}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="h-8 w-8 rounded-full ${getColorIniciales(tarea.asignado)} flex items-center justify-center text-white font-medium text-sm">
+                            ${getIniciales(tarea.asignado)}
+                        </div>
+                        <div class="ml-3">
+                            <div class="text-sm font-medium text-gray-900">${escapeHtml(tarea.asignado || "")}</div>
+                            <div class="text-sm text-gray-500">${tarea.departamento || ""}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${tarea.fecha}</div>
+                    <div class="text-xs text-gray-500">${calcularDiasRestantes(tarea.fecha)}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        ${tarea.departamento || ""}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${getBadgePrioridad(tarea.prioridad)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="status-badge status-${tarea.estado} border">${getEstadoText(tarea.estado)}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${tarea._id || tarea.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${tarea._id || tarea.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `)
     .join("");
 }
 
-function renderFilaTarea(tarea) {
-  return `
-        <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                  tarea.titulo
-                )}</div>
-                <div class="text-sm text-gray-500">${escapeHtml(
-                  tarea.descripcion
-                )}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                    <div class="h-8 w-8 rounded-full ${getColorIniciales(
-                      tarea.asignado
-                    )} flex items-center justify-center text-white font-medium text-sm">
-                        ${getIniciales(tarea.asignado)}
-                    </div>
-                    <div class="ml-3">
-                        <div class="text-sm font-medium text-gray-900">${escapeHtml(
-                          tarea.asignado
-                        )}</div>
-                        <div class="text-sm text-gray-500">${
-                          tarea.departamento
-                        }</div>
-                    </div>
-                </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">${tarea.fecha}</div>
-                <div class="text-xs text-gray-500">${calcularDiasRestantes(
-                  tarea.fecha
-                )}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    ${tarea.departamento}
-                </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                ${getBadgePrioridad(tarea.prioridad)}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="status-badge status-${
-                  tarea.estado
-                } border">${getEstadoText(tarea.estado)}</span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button class="text-blue-600 hover:text-blue-800 mr-3 edit-btn" data-id="${
-                  tarea.id
-                }">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600 hover:text-red-800 delete-btn" data-id="${
-                  tarea.id
-                }">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `;
-}
-
-// Funciones auxiliares
 function calcularDiasRestantes(fecha) {
+  if (!fecha) return "";
   const hoy = new Date();
   const fechaLimite = new Date(fecha.split("/").reverse().join("-"));
   const diffTime = fechaLimite - hoy;
@@ -557,22 +430,14 @@ function calcularDiasRestantes(fecha) {
 function getBadgePrioridad(prioridad) {
   const badges = {
     high: '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-exclamation-triangle mr-1"></i>Alta</span>',
-    medium:
-      '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-exclamation-circle mr-1"></i>Media</span>',
+    medium: '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-exclamation-circle mr-1"></i>Media</span>',
     low: '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-info-circle mr-1"></i>Baja</span>',
   };
-  return (
-    badges[prioridad] ||
-    '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Desconocida</span>'
-  );
+  return badges[prioridad] || '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Desconocida</span>';
 }
 
 function getColorPrioridad(prioridad) {
-  const colores = {
-    high: "bg-red-500",
-    medium: "bg-yellow-500",
-    low: "bg-green-500",
-  };
+  const colores = { high: "bg-red-500", medium: "bg-yellow-500", low: "bg-green-500" };
   return colores[prioridad] || "bg-gray-500";
 }
 
@@ -584,36 +449,21 @@ function escapeHtml(text) {
 }
 
 function getColorIniciales(nombre) {
-  const colores = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-yellow-500",
-    "bg-purple-500",
-    "bg-red-500",
-  ];
-  const index = nombre.charCodeAt(0) % colores.length;
+  const colores = ["bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-red-500"];
+  const index = nombre ? nombre.charCodeAt(0) % colores.length : 0;
   return colores[index];
 }
 
 function getIniciales(nombre) {
   if (!nombre) return "??";
-  return nombre
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+  return nombre.split(" ").map((n) => n[0]).join("").toUpperCase();
 }
 
 function getEstadoText(estado) {
-  const estados = {
-    pending: "Pendiente",
-    "in-progress": "En progreso",
-    completed: "Completado",
-  };
+  const estados = { pending: "Pendiente", "in-progress": "En progreso", completed: "Completado" };
   return estados[estado] || estado;
 }
 
-// Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
   const modalTitle = document.getElementById("modal-title");
   const modalBody = document.getElementById("modal-body");
@@ -629,16 +479,11 @@ function mostrarModal(titulo, contenido, callbackConfirmar) {
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
   modal.classList.remove("hidden");
-
-  // ELIMINAR esta línea:
-  // setTimeout(inicializarFlatpickrEnModal, 100);
 }
 
 function ocultarModal() {
   const modal = document.getElementById("modal");
-  if (modal) {
-    modal.classList.add("hidden");
-  }
+  if (modal) modal.classList.add("hidden");
 }
 
 function mostrarModalCrear() {
@@ -663,12 +508,7 @@ function mostrarModalCrear() {
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-    <input 
-        type="date" 
-        id="create-fecha" 
-        class="w-full px-3 py-2 border border-gray-300 rounded-md" 
-        required>
-                <div class="text-xs text-gray-500 mt-1">Haz clic para seleccionar una fecha</div>
+                <input type="date" id="create-fecha" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -690,158 +530,166 @@ function mostrarModalCrear() {
             </div>
         </div>
     `;
-
   mostrarModal("Nueva Tarea", campos, crearTarea);
 }
 
-function mostrarModalEditar(id) {
-  const tarea = tareas.find((t) => t.id === id);
-  if (!tarea) return;
+async function mostrarModalEditar(id) {
+  try {
+    const response = await apiService.getTarea(id);
+    if (!response.success) {
+      mostrarToast("Error al cargar la tarea", "error");
+      return;
+    }
+    const tarea = response.data;
 
-  const campos = `
+    const campos = `
         <div class="space-y-4">
-            <input type="hidden" id="edit-id" value="${tarea.id}">
+            <input type="hidden" id="edit-id" value="${tarea._id || tarea.id}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-                <input type="text" id="edit-titulo" value="${escapeHtml(
-                  tarea.titulo
-                )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                <input type="text" id="edit-titulo" value="${escapeHtml(tarea.titulo)}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea id="edit-descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3">${escapeHtml(
-                  tarea.descripcion
-                )}</textarea>
+                <textarea id="edit-descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3">${escapeHtml(tarea.descripcion || "")}</textarea>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Asignado a *</label>
                 <select id="edit-asignado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                    <option value="Carlos Martínez" ${
-                      tarea.asignado === "Carlos Martínez" ? "selected" : ""
-                    }>Carlos Martínez</option>
-                    <option value="María López" ${
-                      tarea.asignado === "María López" ? "selected" : ""
-                    }>María López</option>
-                    <option value="Juan Pérez" ${
-                      tarea.asignado === "Juan Pérez" ? "selected" : ""
-                    }>Juan Pérez</option>
+                    <option value="Carlos Martínez" ${tarea.asignado === "Carlos Martínez" ? "selected" : ""}>Carlos Martínez</option>
+                    <option value="María López" ${tarea.asignado === "María López" ? "selected" : ""}>María López</option>
+                    <option value="Juan Pérez" ${tarea.asignado === "Juan Pérez" ? "selected" : ""}>Juan Pérez</option>
                 </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-              <input type="date" id="edit-fecha" 
-              value="${tarea.fecha.split("/").reverse().join("-")}"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
-              required>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
+                <input type="date" id="edit-fecha" value="${tarea.fecha ? tarea.fecha.split("/").reverse().join("-") : ""}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
                     <select id="edit-prioridad" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                        <option value="low" ${
-                          tarea.prioridad === "low" ? "selected" : ""
-                        }>Baja</option>
-                        <option value="medium" ${
-                          tarea.prioridad === "medium" ? "selected" : ""
-                        }>Media</option>
-                        <option value="high" ${
-                          tarea.prioridad === "high" ? "selected" : ""
-                        }>Alta</option>
+                        <option value="low" ${tarea.prioridad === "low" ? "selected" : ""}>Baja</option>
+                        <option value="medium" ${tarea.prioridad === "medium" ? "selected" : ""}>Media</option>
+                        <option value="high" ${tarea.prioridad === "high" ? "selected" : ""}>Alta</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                     <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                        <option value="pending" ${
-                          tarea.estado === "pending" ? "selected" : ""
-                        }>Pendiente</option>
-                        <option value="in-progress" ${
-                          tarea.estado === "in-progress" ? "selected" : ""
-                        }>En Progreso</option>
-                        <option value="completed" ${
-                          tarea.estado === "completed" ? "selected" : ""
-                        }>Completado</option>
+                        <option value="pending" ${tarea.estado === "pending" ? "selected" : ""}>Pendiente</option>
+                        <option value="in-progress" ${tarea.estado === "in-progress" ? "selected" : ""}>En Progreso</option>
+                        <option value="completed" ${tarea.estado === "completed" ? "selected" : ""}>Completado</option>
                     </select>
                 </div>
             </div>
         </div>
     `;
-
-  mostrarModal("Editar Tarea", campos, editarTarea);
+    mostrarModal("Editar Tarea", campos, editarTarea);
+  } catch (error) {
+    console.error("Error al cargar tarea:", error);
+    mostrarToast("Error al cargar la tarea", "error");
+  }
 }
 
-function crearTarea() {
+async function crearTarea() {
   const titulo = document.getElementById("create-titulo")?.value.trim();
   const asignado = document.getElementById("create-asignado")?.value;
-  const fechaInput = document.getElementById("create-fecha")?.value; // yyyy-mm-dd
+  const fechaInput = document.getElementById("create-fecha")?.value;
 
   if (!titulo || !asignado || !fechaInput) {
     mostrarToast("Por favor complete todos los campos obligatorios", "error");
     return;
   }
 
-  // CONVERTIR de yyyy-mm-dd a dd/mm/yyyy
   const fechaParts = fechaInput.split("-");
   const fecha = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
 
   const nuevaTarea = {
-    id: Date.now(),
     titulo: titulo,
-    descripcion:
-      document.getElementById("create-descripcion")?.value.trim() || "",
+    descripcion: document.getElementById("create-descripcion")?.value.trim() || "",
     asignado: asignado,
-    fecha: fecha, // ← Usar la fecha convertida
+    fecha: fecha,
     prioridad: document.getElementById("create-prioridad")?.value || "medium",
     estado: document.getElementById("create-estado")?.value || "pending",
     departamento: asignarDepartamento(asignado),
   };
 
-  tareas.push(nuevaTarea);
-  guardarTareas();
-  renderizarTareas();
-  ocultarModal();
-  mostrarToast("¡Tarea creada con éxito!");
-}
-
-function editarTarea() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const tareaIndex = tareas.findIndex((t) => t.id === id);
-
-  if (tareaIndex !== -1) {
-    tareas[tareaIndex] = {
-      ...tareas[tareaIndex],
-      titulo: document.getElementById("edit-titulo")?.value.trim() || "",
-      descripcion:
-        document.getElementById("edit-descripcion")?.value.trim() || "",
-      asignado: document.getElementById("edit-asignado")?.value || "",
-      fecha: document.getElementById("edit-fecha")?.value || "",
-      prioridad: document.getElementById("edit-prioridad")?.value || "medium",
-      estado: document.getElementById("edit-estado")?.value || "pending",
-      departamento: asignarDepartamento(
-        document.getElementById("edit-asignado")?.value
-      ),
-    };
-
-    guardarTareas();
-    renderizarTareas();
-    ocultarModal();
-    mostrarToast("¡Tarea actualizada con éxito!");
+  try {
+    mostrarCargando(true);
+    const response = await apiService.createTarea(nuevaTarea);
+    if (response.success) {
+      await cargarTareas();
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast("¡Tarea creada con éxito!");
+    } else {
+      mostrarToast("Error al crear la tarea", "error");
+    }
+  } catch (error) {
+    console.error("Error al crear tarea:", error);
+    mostrarToast("Error al crear la tarea", "error");
+  } finally {
+    mostrarCargando(false);
   }
 }
 
-function eliminarTarea(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta tarea?")) {
-    tareas = tareas.filter((t) => t.id !== id);
-    guardarTareas();
-    renderizarTareas();
-    mostrarToast("¡Tarea eliminada con éxito!");
+async function editarTarea() {
+  const id = document.getElementById("edit-id")?.value;
+  if (!id) return;
+
+  const fechaInput = document.getElementById("edit-fecha")?.value;
+  const fechaParts = fechaInput.split("-");
+  const fecha = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+
+  const tareaActualizada = {
+    titulo: document.getElementById("edit-titulo")?.value.trim() || "",
+    descripcion: document.getElementById("edit-descripcion")?.value.trim() || "",
+    asignado: document.getElementById("edit-asignado")?.value || "",
+    fecha: fecha,
+    prioridad: document.getElementById("edit-prioridad")?.value || "medium",
+    estado: document.getElementById("edit-estado")?.value || "pending",
+    departamento: asignarDepartamento(document.getElementById("edit-asignado")?.value),
+  };
+
+  try {
+    mostrarCargando(true);
+    const response = await apiService.updateTarea(id, tareaActualizada);
+    if (response.success) {
+      await cargarTareas();
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast("¡Tarea actualizada con éxito!");
+    } else {
+      mostrarToast("Error al actualizar la tarea", "error");
+    }
+  } catch (error) {
+    console.error("Error al actualizar tarea:", error);
+    mostrarToast("Error al actualizar la tarea", "error");
+  } finally {
+    mostrarCargando(false);
   }
 }
 
-function guardarTareas() {
-  // Los datos se mantienen en el arreglo tareas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Tareas guardadas en memoria:", tareas.length, "elementos");
+async function eliminarTarea(id) {
+  if (!confirm("¿Estás seguro de que quieres eliminar esta tarea?")) return;
+
+  try {
+    mostrarCargando(true);
+    const response = await apiService.deleteTarea(id);
+    if (response.success) {
+      await cargarTareas();
+      renderizarTareas();
+      mostrarToast("¡Tarea eliminada con éxito!");
+    } else {
+      mostrarToast("Error al eliminar la tarea", "error");
+    }
+  } catch (error) {
+    console.error("Error al eliminar tarea:", error);
+    mostrarToast("Error al eliminar la tarea", "error");
+  } finally {
+    mostrarCargando(false);
+  }
 }
 
 function asignarDepartamento(asignado) {
@@ -853,7 +701,6 @@ function asignarDepartamento(asignado) {
   return departamentos[asignado] || "Operaciones Portuarias";
 }
 
-// Funciones para toast
 function mostrarToast(mensaje, tipo = "success") {
   const toast = document.getElementById("toast");
   const toastMessage = document.getElementById("toast-message");
@@ -861,8 +708,6 @@ function mostrarToast(mensaje, tipo = "success") {
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
-
-  // Configurar el color según el tipo
   toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
   if (tipo === "success") {
     toast.classList.add("bg-green-500", "text-white");
@@ -870,16 +715,11 @@ function mostrarToast(mensaje, tipo = "success") {
     toast.classList.add("bg-red-500", "text-white");
   }
 
-  // Mostrar el toast
   toast.classList.remove("hidden");
-
-  // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
   const toast = document.getElementById("toast");
-  if (toast) {
-    toast.classList.add("hidden");
-  }
+  if (toast) toast.classList.add("hidden");
 }
