@@ -1,14 +1,17 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let embarcaciones = [];
 
-function inicializar() {
-  renderizarEmbarcaciones();
+async function inicializar() {
   configurarEventosGlobales();
+  await cargarEmbarcaciones();
 }
 
 function renderizarEmbarcaciones() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -21,6 +24,29 @@ function renderizarEmbarcaciones() {
     actualizarTodo();
     configurarEventosTabla();
   }, 100);
+}
+
+async function cargarEmbarcaciones() {
+  try {
+    const res = await api.get('/embarcaciones');
+    const payload = res && res.data ? res.data : res;
+    if (payload && Array.isArray(payload.items))
+      embarcaciones = payload.items.map(mapServerEmbarcacion);
+    else if (Array.isArray(payload))
+      embarcaciones = payload.map(mapServerEmbarcacion);
+    else embarcaciones = [];
+    renderizarEmbarcaciones();
+    actualizarTodo();
+  } catch (err) {
+    console.error('Error cargando embarcaciones', err);
+  }
+}
+
+function mapServerEmbarcacion(e) {
+  if (!e) return e;
+  const copy = Object.assign({}, e);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
 }
 
 function crearEstructuraCompleta() {
@@ -57,13 +83,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           variacionActivas >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? 'text-green-600'
+                            : 'text-red-600'
                         }">
                             <i class="fas ${
                               variacionActivas >= 0
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${Math.abs(variacionActivas)}%
                         </span>
                         desde el mes pasado
@@ -85,13 +111,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           variacionPuerto >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? 'text-green-600'
+                            : 'text-red-600'
                         }">
                             <i class="fas ${
                               variacionPuerto >= 0
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${Math.abs(variacionPuerto)}%
                         </span>
                         desde el mes pasado
@@ -111,13 +137,13 @@ function crearEstructuraCompleta() {
                     <div class="mt-2 text-sm">
                         <span class="${
                           variacionTotal >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? 'text-green-600'
+                            : 'text-red-600'
                         }">
                             <i class="fas ${
                               variacionTotal >= 0
-                                ? "fa-arrow-up"
-                                : "fa-arrow-down"
+                                ? 'fa-arrow-up'
+                                : 'fa-arrow-down'
                             }"></i> ${Math.abs(variacionTotal)}%
                         </span>
                         desde el mes pasado
@@ -210,45 +236,45 @@ function crearEstructuraCompleta() {
 }
 
 function renderizarTablaEmbarcaciones() {
-  const tableBody = document.getElementById("embarcaciones-table-body");
+  const tableBody = document.getElementById('embarcaciones-table-body');
   if (!tableBody) {
-    console.error("No se encontró el table body para embarcaciones");
+    console.error('No se encontró el table body para embarcaciones');
     return;
   }
 
   tableBody.innerHTML = embarcaciones
     .map((embarcacion) => renderFilaEmbarcacion(embarcacion))
-    .join("");
+    .join('');
 }
 
 function getTipoBadge(tipo, imo) {
   const tipos = {
     container: {
-      nombre: "Portacontenedores",
-      color: "bg-blue-100 text-blue-800",
-      icono: "fas fa-boxes-stacked",
+      nombre: 'Portacontenedores',
+      color: 'bg-blue-100 text-blue-800',
+      icono: 'fas fa-boxes-stacked',
     },
     bulk: {
-      nombre: "Granelero",
-      color: "bg-yellow-100 text-yellow-800",
-      icono: "fas fa-mountain",
+      nombre: 'Granelero',
+      color: 'bg-yellow-100 text-yellow-800',
+      icono: 'fas fa-mountain',
     },
     general: {
-      nombre: "Carga general",
-      color: "bg-green-100 text-green-800",
-      icono: "fas fa-dolly",
+      nombre: 'Carga general',
+      color: 'bg-green-100 text-green-800',
+      icono: 'fas fa-dolly',
     },
     tanker: {
-      nombre: "Tanquero",
-      color: "bg-red-100 text-red-800",
-      icono: "fas fa-oil-can",
+      nombre: 'Tanquero',
+      color: 'bg-red-100 text-red-800',
+      icono: 'fas fa-oil-can',
     },
   };
 
   const info = tipos[tipo] || {
     nombre: tipo,
-    color: "bg-gray-100 text-gray-800",
-    icono: "fas fa-ship",
+    color: 'bg-gray-100 text-gray-800',
+    icono: 'fas fa-ship',
   };
 
   return `
@@ -266,7 +292,7 @@ function renderFilaEmbarcacion(embarcacion) {
     <tr class="hover:bg-gray-50">
         <td class="px-4 py-4 whitespace-nowrap">
             <div class="text-sm font-medium text-gray-900 text-center">${escapeHtml(
-              embarcacion.nombre
+              embarcacion.nombre,
             )}</div>
         </td>
         <td class="px-4 py-4 whitespace-nowrap">
@@ -321,9 +347,9 @@ function actualizarTodo() {
 
 function calcularEstadisticas() {
   const activas = embarcaciones.filter(
-    (e) => e.estado === "in-transit" || e.estado === "in-route"
+    (e) => e.estado === 'in-transit' || e.estado === 'in-route',
   ).length;
-  const enPuerto = embarcaciones.filter((e) => e.estado === "in-port").length;
+  const enPuerto = embarcaciones.filter((e) => e.estado === 'in-port').length;
   const total = embarcaciones.length;
 
   return {
@@ -341,33 +367,33 @@ function calcularVariacionTotal() {
   if (embarcacionesAnterior === 0) return 0;
   return Math.round(
     ((embarcacionesActual - embarcacionesAnterior) / embarcacionesAnterior) *
-      100
+      100,
   );
 }
 
 function calcularVariacionActivas() {
   const activasActual = embarcaciones.filter(
-    (e) => e.estado === "in-transit" || e.estado === "in-route"
+    (e) => e.estado === 'in-transit' || e.estado === 'in-route',
   ).length;
   // Simular datos del mes anterior (85% del actual)
   const activasAnterior = Math.round(activasActual * 0.85);
 
   if (activasAnterior === 0) return 0;
   return Math.round(
-    ((activasActual - activasAnterior) / activasAnterior) * 100
+    ((activasActual - activasAnterior) / activasAnterior) * 100,
   );
 }
 
 function calcularVariacionPuerto() {
   const enPuertoActual = embarcaciones.filter(
-    (e) => e.estado === "in-port"
+    (e) => e.estado === 'in-port',
   ).length;
   // Simular datos del mes anterior (110% del actual - más embarcaciones en puerto)
   const enPuertoAnterior = Math.round(enPuertoActual * 1.1);
 
   if (enPuertoAnterior === 0) return 0;
   return Math.round(
-    ((enPuertoActual - enPuertoAnterior) / enPuertoAnterior) * 100
+    ((enPuertoActual - enPuertoAnterior) / enPuertoAnterior) * 100,
   );
 }
 
@@ -381,74 +407,74 @@ function actualizarTarjetasEstadisticas() {
 
   // Actualizar tarjeta de embarcaciones activas
   const tarjetaActivas = document.querySelector(
-    ".bg-white.border-l-4.border-blue-500"
+    '.bg-white.border-l-4.border-blue-500',
   );
   if (tarjetaActivas) {
-    tarjetaActivas.querySelector("h2").textContent = stats.activas;
-    const porcentajeElement = tarjetaActivas.querySelector(".text-sm span");
+    tarjetaActivas.querySelector('h2').textContent = stats.activas;
+    const porcentajeElement = tarjetaActivas.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionActivas >= 0 ? "text-green-600" : "text-red-600"
+      variacionActivas >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionActivas >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionActivas >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionActivas)}% desde el mes pasado`;
   }
 
   // Actualizar tarjeta de embarcaciones en puerto
   const tarjetaPuerto = document.querySelector(
-    ".bg-white.border-l-4.border-green-500"
+    '.bg-white.border-l-4.border-green-500',
   );
   if (tarjetaPuerto) {
-    tarjetaPuerto.querySelector("h2").textContent = stats.enPuerto;
-    const porcentajeElement = tarjetaPuerto.querySelector(".text-sm span");
+    tarjetaPuerto.querySelector('h2').textContent = stats.enPuerto;
+    const porcentajeElement = tarjetaPuerto.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionPuerto >= 0 ? "text-green-600" : "text-red-600"
+      variacionPuerto >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionPuerto >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionPuerto >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionPuerto)}% desde el mes pasado`;
   }
 
   // Actualizar tarjeta de total embarcaciones
   const tarjetaTotal = document.querySelector(
-    ".bg-white.border-l-4.border-yellow-500"
+    '.bg-white.border-l-4.border-yellow-500',
   );
   if (tarjetaTotal) {
-    tarjetaTotal.querySelector("h2").textContent = totalEmbarcaciones;
-    const porcentajeElement = tarjetaTotal.querySelector(".text-sm span");
+    tarjetaTotal.querySelector('h2').textContent = totalEmbarcaciones;
+    const porcentajeElement = tarjetaTotal.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionTotal >= 0 ? "text-green-600" : "text-red-600"
+      variacionTotal >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionTotal >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionTotal >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionTotal)}% desde el mes pasado`;
   }
 }
 
 function actualizarEstadisticasEstado() {
-  const container = document.getElementById("estadisticas-estado");
+  const container = document.getElementById('estadisticas-estado');
   if (!container) return;
 
   const estados = {
-    "in-transit": {
-      nombre: "En tránsito",
-      color: "blue",
-      cantidad: embarcaciones.filter((e) => e.estado === "in-transit").length,
+    'in-transit': {
+      nombre: 'En tránsito',
+      color: 'blue',
+      cantidad: embarcaciones.filter((e) => e.estado === 'in-transit').length,
     },
-    "in-route": {
-      nombre: "En ruta",
-      color: "green",
-      cantidad: embarcaciones.filter((e) => e.estado === "in-route").length,
+    'in-route': {
+      nombre: 'En ruta',
+      color: 'green',
+      cantidad: embarcaciones.filter((e) => e.estado === 'in-route').length,
     },
-    "in-port": {
-      nombre: "En puerto",
-      color: "yellow",
-      cantidad: embarcaciones.filter((e) => e.estado === "in-port").length,
+    'in-port': {
+      nombre: 'En puerto',
+      color: 'yellow',
+      cantidad: embarcaciones.filter((e) => e.estado === 'in-port').length,
     },
     pending: {
-      nombre: "Pendientes",
-      color: "gray",
-      cantidad: embarcaciones.filter((e) => e.estado === "pending").length,
+      nombre: 'Pendientes',
+      color: 'gray',
+      cantidad: embarcaciones.filter((e) => e.estado === 'pending').length,
     },
   };
 
@@ -475,17 +501,17 @@ function actualizarEstadisticasEstado() {
       }%"></div>
                 </div>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarProximosArribos() {
-  const container = document.getElementById("proximos-arribos");
+  const container = document.getElementById('proximos-arribos');
   if (!container) return;
 
   const proximos = embarcaciones
-    .filter((e) => e.estado === "in-transit" || e.estado === "in-route")
+    .filter((e) => e.estado === 'in-transit' || e.estado === 'in-route')
     .slice(0, 4);
 
   container.innerHTML = proximos
@@ -497,7 +523,7 @@ function actualizarProximosArribos() {
                 </div>
                 <div class="flex-1">
                     <h3 class="text-sm font-medium">${escapeHtml(
-                      embarcacion.nombre
+                      embarcacion.nombre,
                     )}</h3>
                     <p class="text-xs text-gray-500">ETA: ${
                       embarcacion.fecha
@@ -507,28 +533,28 @@ function actualizarProximosArribos() {
                   embarcacion.estado
                 } border">${getEstadoText(embarcacion.estado)}</span>
             </div>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventosGlobales() {
   // Configurar eventos del modal
-  const modal = document.getElementById("modal");
-  const modalClose = document.getElementById("modal-close");
-  const modalCancel = document.getElementById("modal-cancel");
+  const modal = document.getElementById('modal');
+  const modalClose = document.getElementById('modal-close');
+  const modalCancel = document.getElementById('modal-cancel');
 
   if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
+    modalClose.addEventListener('click', ocultarModal);
   }
 
   if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
+    modalCancel.addEventListener('click', ocultarModal);
   }
 
   // Cerrar modal al hacer clic fuera
   if (modal) {
-    modal.addEventListener("click", function (e) {
+    modal.addEventListener('click', function (e) {
       if (e.target === modal) {
         ocultarModal();
       }
@@ -536,16 +562,16 @@ function configurarEventosGlobales() {
   }
 
   // Configurar toast
-  const toastClose = document.getElementById("toast-close");
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 
   // Usar event delegation para el botón de nueva embarcación
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-nueva-embarcacion" ||
-      e.target.closest("#btn-nueva-embarcacion")
+      e.target.id === 'btn-nueva-embarcacion' ||
+      e.target.closest('#btn-nueva-embarcacion')
     ) {
       mostrarModalCrear();
     }
@@ -553,60 +579,60 @@ function configurarEventosGlobales() {
 }
 
 function configurarEventosTabla() {
-  const tableBody = document.getElementById("embarcaciones-table-body");
+  const tableBody = document.getElementById('embarcaciones-table-body');
   if (!tableBody) return;
 
   // Usar event delegation para los botones de editar y eliminar
-  tableBody.addEventListener("click", (e) => {
+  tableBody.addEventListener('click', (e) => {
     const target = e.target;
-    const editBtn = target.closest(".edit-btn");
-    const deleteBtn = target.closest(".delete-btn");
+    const editBtn = target.closest('.edit-btn');
+    const deleteBtn = target.closest('.delete-btn');
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarEmbarcacion(id);
     }
   });
 
   // Configurar filtros
-  const filtroEstado = document.getElementById("filtro-estado");
-  const filtroTipo = document.getElementById("filtro-tipo");
-  const buscarEmbarcaciones = document.getElementById("buscar-embarcaciones");
+  const filtroEstado = document.getElementById('filtro-estado');
+  const filtroTipo = document.getElementById('filtro-tipo');
+  const buscarEmbarcaciones = document.getElementById('buscar-embarcaciones');
 
   if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
   }
   if (filtroTipo) {
-    filtroTipo.addEventListener("change", aplicarFiltros);
+    filtroTipo.addEventListener('change', aplicarFiltros);
   }
   if (buscarEmbarcaciones) {
-    buscarEmbarcaciones.addEventListener("input", aplicarFiltros);
+    buscarEmbarcaciones.addEventListener('input', aplicarFiltros);
   }
 }
 
 function aplicarFiltros() {
-  const filtroEstado = document.getElementById("filtro-estado")?.value;
-  const filtroTipo = document.getElementById("filtro-tipo")?.value;
+  const filtroEstado = document.getElementById('filtro-estado')?.value;
+  const filtroTipo = document.getElementById('filtro-tipo')?.value;
   const textoBusqueda = document
-    .getElementById("buscar-embarcaciones")
+    .getElementById('buscar-embarcaciones')
     ?.value.toLowerCase();
 
   let embarcacionesFiltradas = embarcaciones;
 
   if (filtroEstado) {
     embarcacionesFiltradas = embarcacionesFiltradas.filter(
-      (e) => e.estado === filtroEstado
+      (e) => e.estado === filtroEstado,
     );
   }
 
   if (filtroTipo) {
     embarcacionesFiltradas = embarcacionesFiltradas.filter(
-      (e) => e.tipo === filtroTipo
+      (e) => e.tipo === filtroTipo,
     );
   }
 
@@ -616,7 +642,7 @@ function aplicarFiltros() {
         e.nombre.toLowerCase().includes(textoBusqueda) ||
         e.imo.toLowerCase().includes(textoBusqueda) ||
         e.origen.toLowerCase().includes(textoBusqueda) ||
-        e.destino.toLowerCase().includes(textoBusqueda)
+        e.destino.toLowerCase().includes(textoBusqueda),
     );
   }
 
@@ -624,64 +650,64 @@ function aplicarFiltros() {
 }
 
 function renderizarTablaFiltrada(embarcacionesFiltradas) {
-  const tableBody = document.getElementById("embarcaciones-table-body");
+  const tableBody = document.getElementById('embarcaciones-table-body');
   if (!tableBody) return;
 
   tableBody.innerHTML = embarcacionesFiltradas
     .map((embarcacion) => renderFilaEmbarcacion(embarcacion))
-    .join("");
+    .join('');
 }
 
 // Funciones auxiliares
 function getEstadoText(estado) {
   const estados = {
-    pending: "Pendiente",
-    "in-transit": "En tránsito",
-    "in-route": "En ruta",
-    "in-port": "En puerto",
+    pending: 'Pendiente',
+    'in-transit': 'En tránsito',
+    'in-route': 'En ruta',
+    'in-port': 'En puerto',
   };
   return estados[estado] || estado;
 }
 
 function getTipoText(tipo) {
   const tipos = {
-    container: "Portacontenedores",
-    bulk: "Granelero",
-    general: "Carga general",
-    tanker: "Tanquero",
+    container: 'Portacontenedores',
+    bulk: 'Granelero',
+    general: 'Carga general',
+    tanker: 'Tanquero',
   };
   return tipos[tipo] || tipo;
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
+  if (!text) return '';
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 // Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
-  const modalTitle = document.getElementById("modal-title");
-  const modalBody = document.getElementById("modal-body");
-  const modalSave = document.getElementById("modal-save");
-  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalSave = document.getElementById('modal-save');
+  const modal = document.getElementById('modal');
 
   if (!modal || !modalTitle || !modalBody || !modalSave) {
-    console.error("Elementos del modal no encontrados");
+    console.error('Elementos del modal no encontrados');
     return;
   }
 
   modalTitle.textContent = titulo;
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
-  modal.classList.remove("hidden");
+  modal.classList.remove('hidden');
 }
 
 function ocultarModal() {
-  const modal = document.getElementById("modal");
+  const modal = document.getElementById('modal');
   if (modal) {
-    modal.classList.add("hidden");
+    modal.classList.add('hidden');
   }
 }
 
@@ -739,15 +765,15 @@ function mostrarModalCrear() {
         </div>
     `;
 
-  mostrarModal("Nueva Embarcación", campos, crearEmbarcacion);
+  mostrarModal('Nueva Embarcación', campos, crearEmbarcacion);
 }
 
 function mostrarModalEditar(id) {
-  const embarcacion = embarcaciones.find((e) => e.id === id);
+  const embarcacion = embarcaciones.find((e) => String(e.id) === String(id));
   if (!embarcacion) return;
 
   // Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para el input date
-  const [dia, mes, anio] = embarcacion.fecha.split("/");
+  const [dia, mes, anio] = embarcacion.fecha.split('/');
   const fechaInput = `${anio}-${mes}-${dia}`;
 
   const campos = `
@@ -756,7 +782,7 @@ function mostrarModalEditar(id) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input type="text" id="edit-nombre" value="${escapeHtml(
-                  embarcacion.nombre
+                  embarcacion.nombre,
                 )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
             </div>
             <div>
@@ -769,13 +795,13 @@ function mostrarModalEditar(id) {
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Origen *</label>
                     <input type="text" id="edit-origen" value="${escapeHtml(
-                      embarcacion.origen
+                      embarcacion.origen,
                     )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Destino *</label>
                     <input type="text" id="edit-destino" value="${escapeHtml(
-                      embarcacion.destino
+                      embarcacion.destino,
                     )}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                 </div>
             </div>
@@ -796,16 +822,16 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
                     <select id="edit-tipo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="container" ${
-                          embarcacion.tipo === "container" ? "selected" : ""
+                          embarcacion.tipo === 'container' ? 'selected' : ''
                         }>Portacontenedores</option>
                         <option value="bulk" ${
-                          embarcacion.tipo === "bulk" ? "selected" : ""
+                          embarcacion.tipo === 'bulk' ? 'selected' : ''
                         }>Granelero</option>
                         <option value="general" ${
-                          embarcacion.tipo === "general" ? "selected" : ""
+                          embarcacion.tipo === 'general' ? 'selected' : ''
                         }>Carga general</option>
                         <option value="tanker" ${
-                          embarcacion.tipo === "tanker" ? "selected" : ""
+                          embarcacion.tipo === 'tanker' ? 'selected' : ''
                         }>Tanquero</option>
                     </select>
                 </div>
@@ -813,16 +839,16 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                     <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="pending" ${
-                          embarcacion.estado === "pending" ? "selected" : ""
+                          embarcacion.estado === 'pending' ? 'selected' : ''
                         }>Pendiente</option>
                         <option value="in-transit" ${
-                          embarcacion.estado === "in-transit" ? "selected" : ""
+                          embarcacion.estado === 'in-transit' ? 'selected' : ''
                         }>En tránsito</option>
                         <option value="in-route" ${
-                          embarcacion.estado === "in-route" ? "selected" : ""
+                          embarcacion.estado === 'in-route' ? 'selected' : ''
                         }>En ruta</option>
                         <option value="in-port" ${
-                          embarcacion.estado === "in-port" ? "selected" : ""
+                          embarcacion.estado === 'in-port' ? 'selected' : ''
                         }>En puerto</option>
                     </select>
                 </div>
@@ -830,82 +856,96 @@ function mostrarModalEditar(id) {
         </div>
     `;
 
-  mostrarModal("Editar Embarcación", campos, editarEmbarcacion);
+  mostrarModal('Editar Embarcación', campos, editarEmbarcacion);
 }
 
-function crearEmbarcacion() {
-  const nombre = document.getElementById("create-nombre")?.value.trim();
-  const imo = document.getElementById("create-imo")?.value.trim();
-  const origen = document.getElementById("create-origen")?.value.trim();
-  const destino = document.getElementById("create-destino")?.value.trim();
-  const fechaInput = document.getElementById("create-fecha")?.value;
+async function crearEmbarcacion() {
+  const nombre = document.getElementById('create-nombre')?.value.trim();
+  const imo = document.getElementById('create-imo')?.value.trim();
+  const origen = document.getElementById('create-origen')?.value.trim();
+  const destino = document.getElementById('create-destino')?.value.trim();
+  const fechaInput = document.getElementById('create-fecha')?.value;
 
   if (!nombre || !imo || !origen || !destino || !fechaInput) {
-    mostrarToast("Por favor complete todos los campos obligatorios", "error");
+    mostrarToast('Por favor complete todos los campos obligatorios', 'error');
     return;
   }
 
   // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
-  const [anio, mes, dia] = fechaInput.split("-");
+  const [anio, mes, dia] = fechaInput.split('-');
   const fecha = `${dia}/${mes}/${anio}`;
 
-  const nuevaEmbarcacion = {
-    id: Date.now(),
-    nombre: nombre,
-    imo: imo,
-    origen: origen,
-    destino: destino,
-    fecha: fecha,
-    capacidad:
-      document.getElementById("create-capacidad")?.value.trim() || "N/A",
-    tipo: document.getElementById("create-tipo")?.value || "container",
-    estado: document.getElementById("create-estado")?.value || "pending",
-  };
-
-  embarcaciones.push(nuevaEmbarcacion);
-  guardarEmbarcaciones();
-  renderizarEmbarcaciones();
-  ocultarModal();
-  mostrarToast("¡Embarcación creada con éxito!");
-}
-
-function editarEmbarcacion() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const embarcacionIndex = embarcaciones.findIndex((e) => e.id === id);
-
-  if (embarcacionIndex !== -1) {
-    const fechaInput = document.getElementById("edit-fecha")?.value;
-
-    // Convertir fecha de yyyy-mm-dd a dd/mm/yyyy
-    const [anio, mes, dia] = fechaInput.split("-");
-    const fecha = `${dia}/${mes}/${anio}`;
-
-    embarcaciones[embarcacionIndex] = {
-      ...embarcaciones[embarcacionIndex],
-      nombre: document.getElementById("edit-nombre")?.value.trim() || "",
-      imo: document.getElementById("edit-imo")?.value.trim() || "",
-      origen: document.getElementById("edit-origen")?.value.trim() || "",
-      destino: document.getElementById("edit-destino")?.value.trim() || "",
+  try {
+    const payload = {
+      nombre: nombre,
+      imo: imo,
+      origen: origen,
+      destino: destino,
       fecha: fecha,
       capacidad:
-        document.getElementById("edit-capacidad")?.value.trim() || "N/A",
-      tipo: document.getElementById("edit-tipo")?.value || "container",
-      estado: document.getElementById("edit-estado")?.value || "pending",
+        document.getElementById('create-capacidad')?.value.trim() || 'N/A',
+      tipo: document.getElementById('create-tipo')?.value || 'container',
+      estado: document.getElementById('create-estado')?.value || 'pending',
     };
 
-    guardarEmbarcaciones();
+    const res = await api.post('/embarcaciones', payload);
+    const created = res && res.data ? res.data : res;
+    embarcaciones.push(mapServerEmbarcacion(created));
     renderizarEmbarcaciones();
     ocultarModal();
-    mostrarToast("¡Embarcación actualizada con éxito!");
+    mostrarToast('¡Embarcación creada con éxito!');
+  } catch (err) {
+    console.error('Error creando embarcación', err);
+    mostrarToast('Error al crear embarcación', 'error');
   }
 }
 
-function eliminarEmbarcacion(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta embarcación?")) {
-    embarcaciones = embarcaciones.filter((e) => e.id !== id);
-    guardarEmbarcaciones();
+async function editarEmbarcacion() {
+  const id = document.getElementById('edit-id')?.value;
+  try {
+    const fechaInput = document.getElementById('edit-fecha')?.value;
+    const [anio, mes, dia] = fechaInput.split('-');
+    const fecha = `${dia}/${mes}/${anio}`;
+
+    const payload = {
+      nombre: document.getElementById('edit-nombre')?.value.trim() || '',
+      imo: document.getElementById('edit-imo')?.value.trim() || '',
+      origen: document.getElementById('edit-origen')?.value.trim() || '',
+      destino: document.getElementById('edit-destino')?.value.trim() || '',
+      fecha: fecha,
+      capacidad:
+        document.getElementById('edit-capacidad')?.value.trim() || 'N/A',
+      tipo: document.getElementById('edit-tipo')?.value || 'container',
+      estado: document.getElementById('edit-estado')?.value || 'pending',
+    };
+
+    const res = await api.put(`/embarcaciones/${id}`, payload);
+    const updated = res && res.data ? res.data : res;
+    const mapped = mapServerEmbarcacion(updated);
+    embarcaciones = embarcaciones.map((e) =>
+      String(e.id) === String(id) ? mapped : e,
+    );
+
     renderizarEmbarcaciones();
-    mostrarToast("¡Embarcación eliminada con éxito!");
+    ocultarModal();
+    mostrarToast('¡Embarcación actualizada con éxito!');
+  } catch (err) {
+    console.error('Error actualizando embarcación', err);
+    mostrarToast('Error al actualizar embarcación', 'error');
+  }
+}
+
+async function eliminarEmbarcacion(id) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta embarcación?'))
+    return;
+  try {
+    await api.delete(`/embarcaciones/${id}`);
+    embarcaciones = embarcaciones.filter((e) => String(e.id) !== String(id));
+    renderizarEmbarcaciones();
+    mostrarToast('¡Embarcación eliminada con éxito!');
+  } catch (err) {
+    console.error('Error eliminando embarcación', err);
+    mostrarToast('Error al eliminar embarcación', 'error');
   }
 }
 
@@ -913,40 +953,40 @@ function guardarEmbarcaciones() {
   // Los datos se mantienen en el arreglo embarcaciones en memoria
   // No se usa localStorage, los datos persisten durante la sesión
   console.log(
-    "Embarcaciones guardadas en memoria:",
+    'Embarcaciones (local) actualizadas:',
     embarcaciones.length,
-    "elementos"
+    'elementos',
   );
 }
 
 // Funciones para toast
-function mostrarToast(mensaje, tipo = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
+  const toast = document.getElementById('toast');
   if (toast) {
-    toast.classList.add("hidden");
+    toast.classList.add('hidden');
   }
 }
 

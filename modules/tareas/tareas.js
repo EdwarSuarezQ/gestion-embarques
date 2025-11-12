@@ -1,21 +1,42 @@
+import ApiService from "../../assets/JS/utils/apiService.js";
+
+const api = new ApiService();
 let tareas = [];
-let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
 
-// Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarTareas();
+// Inicialización del módulo
+async function inicializarModulo() {
+  console.log("Inicializando módulo: tareas");
   configurarEventosGlobales();
+  await cargarTareas();
 }
 
-// Auto-inicialización cuando el DOM esté listo
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", inicializarModulo);
 } else {
-  // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
+}
+let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
+
+// Función para cargar tareas desde la API
+async function cargarTareas() {
+  try {
+    const res = await api.get("/tareas");
+    const payload = res && res.data ? res.data : res;
+    // Si la respuesta trae paginación (items) o una lista directa
+    if (payload && Array.isArray(payload.items)) {
+      tareas = payload.items.map(mapServerTarea);
+    } else if (Array.isArray(payload)) {
+      tareas = payload.map(mapServerTarea);
+    } else if (payload && typeof payload === "object" && payload !== null) {
+      // Single object -> envolver en array
+      tareas = [mapServerTarea(payload)];
+    } else {
+      tareas = [];
+    }
+    renderizarTareas();
+  } catch (error) {
+    console.error("Error al cargar tareas:", error);
+  }
 }
 
 function renderizarTareas() {
@@ -63,7 +84,7 @@ function crearEstructuraCompleta() {
   const diferencia = eficiencia - eficienciaSemanaPasada;
 
   return `
-    <div class="tareas-module">    
+    <div class="tareas-module">
         <!-- Estadísticas -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-blue-500">
@@ -410,12 +431,12 @@ function configurarEventosTabla() {
     const deleteBtn = target.closest(".delete-btn");
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarTarea(id);
     }
   });
@@ -663,10 +684,10 @@ function mostrarModalCrear() {
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-    <input 
-        type="date" 
-        id="create-fecha" 
-        class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+    <input
+        type="date"
+        id="create-fecha"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md"
         required>
                 <div class="text-xs text-gray-500 mt-1">Haz clic para seleccionar una fecha</div>
             </div>
@@ -695,7 +716,7 @@ function mostrarModalCrear() {
 }
 
 function mostrarModalEditar(id) {
-  const tarea = tareas.find((t) => t.id === id);
+  const tarea = tareas.find((t) => t.id === id || t._id === id);
   if (!tarea) return;
 
   const campos = `
@@ -729,9 +750,9 @@ function mostrarModalEditar(id) {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-              <input type="date" id="edit-fecha" 
+              <input type="date" id="edit-fecha"
               value="${tarea.fecha.split("/").reverse().join("-")}"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
               required>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -784,64 +805,101 @@ function crearTarea() {
   const fechaParts = fechaInput.split("-");
   const fecha = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
 
-  const nuevaTarea = {
-    id: Date.now(),
+  const body = {
     titulo: titulo,
     descripcion:
       document.getElementById("create-descripcion")?.value.trim() || "",
     asignado: asignado,
-    fecha: fecha, // ← Usar la fecha convertida
+    fecha: fecha, // formato dd/mm/yyyy
     prioridad: document.getElementById("create-prioridad")?.value || "medium",
     estado: document.getElementById("create-estado")?.value || "pending",
     departamento: asignarDepartamento(asignado),
   };
 
-  tareas.push(nuevaTarea);
-  guardarTareas();
-  renderizarTareas();
-  ocultarModal();
-  mostrarToast("¡Tarea creada con éxito!");
+  // Llamada a la API
+  api
+    .post("/tareas", body)
+    .then((res) => {
+      const created = res && res.data ? res.data : res;
+      tareas.unshift(mapServerTarea(created));
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast("¡Tarea creada con éxito!");
+    })
+    .catch((err) => {
+      console.error("Error creando tarea", err);
+      mostrarToast(err.message || "Error al crear tarea", "error");
+    });
 }
 
 function editarTarea() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const tareaIndex = tareas.findIndex((t) => t.id === id);
+  const id = document.getElementById("edit-id")?.value;
+  if (!id) return;
 
-  if (tareaIndex !== -1) {
-    tareas[tareaIndex] = {
-      ...tareas[tareaIndex],
-      titulo: document.getElementById("edit-titulo")?.value.trim() || "",
-      descripcion:
-        document.getElementById("edit-descripcion")?.value.trim() || "",
-      asignado: document.getElementById("edit-asignado")?.value || "",
-      fecha: document.getElementById("edit-fecha")?.value || "",
-      prioridad: document.getElementById("edit-prioridad")?.value || "medium",
-      estado: document.getElementById("edit-estado")?.value || "pending",
-      departamento: asignarDepartamento(
-        document.getElementById("edit-asignado")?.value
-      ),
-    };
-
-    guardarTareas();
-    renderizarTareas();
-    ocultarModal();
-    mostrarToast("¡Tarea actualizada con éxito!");
+  // Convertir fecha yyyy-mm-dd -> dd/mm/yyyy si aplica
+  let fechaVal = document.getElementById("edit-fecha")?.value || "";
+  if (fechaVal && fechaVal.includes("-")) {
+    const parts = fechaVal.split("-");
+    fechaVal = `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
+
+  const body = {
+    titulo: document.getElementById("edit-titulo")?.value.trim() || "",
+    descripcion:
+      document.getElementById("edit-descripcion")?.value.trim() || "",
+    asignado: document.getElementById("edit-asignado")?.value || "",
+    fecha: fechaVal,
+    prioridad: document.getElementById("edit-prioridad")?.value || "medium",
+    estado: document.getElementById("edit-estado")?.value || "pending",
+    departamento: asignarDepartamento(
+      document.getElementById("edit-asignado")?.value
+    ),
+  };
+
+  api
+    .put(`/tareas/${id}`, body)
+    .then((res) => {
+      const updated = res && res.data ? res.data : res;
+      // Reemplazar en memoria
+      tareas = tareas.map((t) =>
+        t.id === id || t._id === id ? mapServerTarea(updated) : t
+      );
+      renderizarTareas();
+      ocultarModal();
+      mostrarToast("¡Tarea actualizada con éxito!");
+    })
+    .catch((err) => {
+      console.error("Error actualizando tarea", err);
+      mostrarToast(err.message || "Error al actualizar tarea", "error");
+    });
 }
 
 function eliminarTarea(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta tarea?")) {
-    tareas = tareas.filter((t) => t.id !== id);
-    guardarTareas();
-    renderizarTareas();
-    mostrarToast("¡Tarea eliminada con éxito!");
-  }
+  if (!confirm("¿Estás seguro de que quieres eliminar esta tarea?")) return;
+  api
+    .delete(`/tareas/${id}`)
+    .then(() => {
+      tareas = tareas.filter((t) => t.id !== id && t._id !== id);
+      renderizarTareas();
+      mostrarToast("¡Tarea eliminada con éxito!");
+    })
+    .catch((err) => {
+      console.error("Error eliminando tarea", err);
+      mostrarToast(err.message || "Error al eliminar tarea", "error");
+    });
 }
 
 function guardarTareas() {
-  // Los datos se mantienen en el arreglo tareas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Tareas guardadas en memoria:", tareas.length, "elementos");
+  // Antes: persistía en memoria. Ahora la persistencia se realiza via API.
+  // Esta función se mantiene como placeholder para compatibilidad.
+}
+
+// Normalizar objeto recibido desde el servidor
+function mapServerTarea(t) {
+  if (!t) return t;
+  const copy = Object.assign({}, t);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
 }
 
 function asignarDepartamento(asignado) {
