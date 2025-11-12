@@ -1,17 +1,33 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let metricas = obtenerMetricasReales();
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarEstadisticas();
+async function inicializarModulo() {
+  console.log('Inicializando módulo...');
   configurarEventos();
+  await cargarMetricas();
+  renderizarEstadisticas();
+}
+
+async function cargarMetricas() {
+  try {
+    const res = await api.get('/estadisticas');
+    const payload = res && res.data ? res.data : res;
+    if (payload) metricas = payload;
+  } catch (err) {
+    console.warn(
+      'No se pudo cargar métricas desde API, usando simuladas:',
+      err,
+    );
+    metricas = obtenerMetricasReales();
+  }
 }
 
 // Auto-inicialización cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", inicializarModulo);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarModulo);
 } else {
   // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
@@ -25,38 +41,38 @@ function obtenerMetricasReales() {
   return {
     embarquesTotales: embarques.length,
     teusMovilizados: embarques.reduce((acc, e) => acc + (e.teus || 0), 0),
-    embarquesCompletados: embarques.filter((e) => e.estado === "completado")
+    embarquesCompletados: embarques.filter((e) => e.estado === 'completado')
       .length,
-    embarquesTransito: embarques.filter((e) => e.estado === "transito").length,
-    embarquesPendientes: embarques.filter((e) => e.estado === "pendiente")
+    embarquesTransito: embarques.filter((e) => e.estado === 'transito').length,
+    embarquesPendientes: embarques.filter((e) => e.estado === 'pendiente')
       .length,
     incidentes: embarques.filter((e) => e.incidente).length,
 
     // ejemplos adicionales
-    tareasPendientes: tareas.filter((t) => t.estado === "pendiente").length,
-    tareasCompletadas: tareas.filter((t) => t.estado === "completado").length,
+    tareasPendientes: tareas.filter((t) => t.estado === 'pendiente').length,
+    tareasCompletadas: tareas.filter((t) => t.estado === 'completado').length,
 
-    personalActivo: personal.filter((p) => p.estado === "activo").length,
+    personalActivo: personal.filter((p) => p.estado === 'activo').length,
     personalTotal: personal.length,
 
     tiempoPromedio: calcularTiempoPromedio(embarques),
-    variacionMensual: "+0%", // aquí podrías calcular real
+    variacionMensual: '+0%', // aquí podrías calcular real
   };
 }
 
 function calcularTiempoPromedio(embarques) {
-  if (!embarques || embarques.length === 0) return "0 días";
+  if (!embarques || embarques.length === 0) return '0 días';
   const totalDias = embarques.reduce(
     (acc, e) => acc + (parseFloat(e.dias) || 0),
-    0
+    0,
   );
-  return (totalDias / embarques.length).toFixed(1) + " días";
+  return (totalDias / embarques.length).toFixed(1) + ' días';
 }
 
 function renderizarEstadisticas() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -70,37 +86,37 @@ function crearEstructuraCompleta() {
             <!-- Métricas principales -->
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                 ${crearTarjetaMetrica(
-                  "Embarques Totales",
-                  "metric-embarques",
-                  "blue",
-                  "ship",
+                  'Embarques Totales',
+                  'metric-embarques',
+                  'blue',
+                  'ship',
                   metricas.embarquesTotales,
-                  metricas.variacionMensual
+                  metricas.variacionMensual,
                 )}
                 ${crearTarjetaMetrica(
-                  "TEUs Movilizados",
-                  "metric-teus",
-                  "green",
-                  "box",
+                  'TEUs Movilizados',
+                  'metric-teus',
+                  'green',
+                  'box',
                   metricas.teusMovilizados.toLocaleString(),
-                  "+8%"
+                  '+8%',
                 )}
                 ${crearTarjetaMetrica(
-                  "Tiempo Promedio",
-                  "metric-tiempo",
-                  "yellow",
-                  "clock",
+                  'Tiempo Promedio',
+                  'metric-tiempo',
+                  'yellow',
+                  'clock',
                   metricas.tiempoPromedio,
-                  "-0.3 días",
-                  "mejora mensual"
+                  '-0.3 días',
+                  'mejora mensual',
                 )}
                 ${crearTarjetaMetrica(
-                  "Eficiencia",
-                  "metric-eficiencia",
-                  "red",
-                  "chart-line",
+                  'Eficiencia',
+                  'metric-eficiencia',
+                  'red',
+                  'chart-line',
                   calcularEficiencia(),
-                  "+2.1%"
+                  '+2.1%',
                 )}
             </div>
 
@@ -168,7 +184,7 @@ function crearTarjetaMetrica(
   icono,
   valor,
   tendencia,
-  textoAdicional = "vs mes anterior"
+  textoAdicional = 'vs mes anterior',
 ) {
   return `
         <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-${color}-500">
@@ -183,17 +199,17 @@ function crearTarjetaMetrica(
             </div>
             <div class="mt-2 text-sm">
                 <span class="${
-                  tendencia.includes("+") || tendencia.includes("-0.3")
-                    ? "text-green-600"
-                    : "text-red-600"
+                  tendencia.includes('+') || tendencia.includes('-0.3')
+                    ? 'text-green-600'
+                    : 'text-red-600'
                 }">
                     <i class="fas fa-${
-                      tendencia.includes("+")
-                        ? "arrow-up"
-                        : tendencia.includes("-")
-                        ? "arrow-down"
-                        : "minus"
-                    }"></i> 
+                      tendencia.includes('+')
+                        ? 'arrow-up'
+                        : tendencia.includes('-')
+                        ? 'arrow-down'
+                        : 'minus'
+                    }"></i>
                     ${tendencia}
                 </span>
                 ${textoAdicional}
@@ -289,17 +305,17 @@ function crearIndicadoresClave() {
         <div class="text-xs text-gray-500">Operación completa</div>
       </div>
       <div class="text-lg font-bold text-yellow-600">${
-        metricas.tiempoPromedio || "0 días"
+        metricas.tiempoPromedio || '0 días'
       }</div>
     </div>
   `;
 }
 
 function actualizarMetricasEnDOM() {
-  actualizarElemento("metric-embarques", metricas.embarquesTotales);
-  actualizarElemento("metric-teus", metricas.teusMovilizados.toLocaleString());
-  actualizarElemento("metric-tiempo", metricas.tiempoPromedio);
-  actualizarElemento("metric-eficiencia", calcularEficiencia());
+  actualizarElemento('metric-embarques', metricas.embarquesTotales);
+  actualizarElemento('metric-teus', metricas.teusMovilizados.toLocaleString());
+  actualizarElemento('metric-tiempo', metricas.tiempoPromedio);
+  actualizarElemento('metric-eficiencia', calcularEficiencia());
 }
 
 function actualizarElemento(selector, valor) {
@@ -308,30 +324,30 @@ function actualizarElemento(selector, valor) {
 }
 
 function configurarEventos() {
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-actualizar" ||
-      e.target.closest("#btn-actualizar")
+      e.target.id === 'btn-actualizar' ||
+      e.target.closest('#btn-actualizar')
     ) {
       actualizarDatos();
     }
-    if (e.target.id === "btn-reporte" || e.target.closest("#btn-reporte")) {
+    if (e.target.id === 'btn-reporte' || e.target.closest('#btn-reporte')) {
       generarReporte();
     }
   });
 
-  const filtroPeriodo = document.getElementById("filtro-periodo");
-  const filtroTipo = document.getElementById("filtro-tipo");
+  const filtroPeriodo = document.getElementById('filtro-periodo');
+  const filtroTipo = document.getElementById('filtro-tipo');
 
-  if (filtroPeriodo) filtroPeriodo.addEventListener("change", aplicarFiltros);
-  if (filtroTipo) filtroTipo.addEventListener("change", aplicarFiltros);
+  if (filtroPeriodo) filtroPeriodo.addEventListener('change', aplicarFiltros);
+  if (filtroTipo) filtroTipo.addEventListener('change', aplicarFiltros);
 }
 
 function aplicarFiltros() {
-  const periodo = document.getElementById("filtro-periodo")?.value;
-  const tipo = document.getElementById("filtro-tipo")?.value;
+  const periodo = document.getElementById('filtro-periodo')?.value;
+  const tipo = document.getElementById('filtro-tipo')?.value;
 
-  console.log("Aplicando filtros:", { periodo, tipo });
+  console.log('Aplicando filtros:', { periodo, tipo });
 
   // Recalcular métricas filtradas
   simularCambioPorFiltros(periodo, tipo);
@@ -340,61 +356,61 @@ function aplicarFiltros() {
   actualizarMetricasEnDOM();
 
   // 🔥 Re-renderizar Distribución e Indicadores
-  const distribucion = document.getElementById("distribucion-estados");
+  const distribucion = document.getElementById('distribucion-estados');
   if (distribucion) distribucion.innerHTML = crearDistribucionEstados();
 
-  const indicadores = document.getElementById("indicadores-clave");
+  const indicadores = document.getElementById('indicadores-clave');
   if (indicadores) indicadores.innerHTML = crearIndicadoresClave();
 
   mostrarToast(
     `Filtros aplicados: ${getTextoPeriodo(periodo)} - ${getTextoTipo(tipo)}`,
-    "info"
+    'info',
   );
 }
 
 function simularCambioPorFiltros(periodo, tipo) {
   // Aquí puedes aplicar lógica real.
   // Por ahora solo afectamos un poco las métricas para ver cambios:
-  const factor = tipo === "container" ? 1.2 : tipo === "bulk" ? 0.8 : 1;
+  const factor = tipo === 'container' ? 1.2 : tipo === 'bulk' ? 0.8 : 1;
   metricas.embarquesCompletados = Math.round(
-    metricas.embarquesCompletados * factor
+    metricas.embarquesCompletados * factor,
   );
   metricas.embarquesPendientes = Math.round(
-    metricas.embarquesPendientes * factor
+    metricas.embarquesPendientes * factor,
   );
 }
 
 function getTextoPeriodo(periodo) {
   const periodos = {
-    mes: "Este Mes",
-    trimestre: "Este Trimestre",
-    anio: "Este Año",
+    mes: 'Este Mes',
+    trimestre: 'Este Trimestre',
+    anio: 'Este Año',
   };
   return periodos[periodo] || periodo;
 }
 
 function getTextoTipo(tipo) {
   const tipos = {
-    todos: "Todos los tipos",
-    container: "Contenedores",
-    bulk: "Granel",
-    liquid: "Líquidos",
+    todos: 'Todos los tipos',
+    container: 'Contenedores',
+    bulk: 'Granel',
+    liquid: 'Líquidos',
   };
   return tipos[tipo] || tipo;
 }
 
 function actualizarDatos() {
-  mostrarToast("Actualizando datos...", "info");
+  mostrarToast('Actualizando datos...', 'info');
   setTimeout(() => {
     generarNuevosDatos();
     guardarMetricas();
     actualizarMetricasEnDOM();
     // También refrescamos las secciones
-    document.getElementById("distribucion-estados").innerHTML =
+    document.getElementById('distribucion-estados').innerHTML =
       crearDistribucionEstados();
-    document.getElementById("indicadores-clave").innerHTML =
+    document.getElementById('indicadores-clave').innerHTML =
       crearIndicadoresClave();
-    mostrarToast("Datos actualizados correctamente", "success");
+    mostrarToast('Datos actualizados correctamente', 'success');
   }, 1000);
 }
 
@@ -402,15 +418,15 @@ function generarNuevosDatos() {
   const cambio = Math.random() * 0.2 - 0.1;
   metricas.embarquesTotales = Math.max(
     1,
-    Math.round(metricas.embarquesTotales * (1 + cambio))
+    Math.round(metricas.embarquesTotales * (1 + cambio)),
   );
   metricas.teusMovilizados = Math.max(
     1,
-    Math.round(metricas.teusMovilizados * (1 + cambio))
+    Math.round(metricas.teusMovilizados * (1 + cambio)),
   );
   metricas.incidentes = Math.max(
     0,
-    Math.round(metricas.incidentes * (1 + cambio))
+    Math.round(metricas.incidentes * (1 + cambio)),
   );
   metricas.embarquesCompletados = Math.round(metricas.embarquesTotales * 0.85);
   metricas.embarquesTransito = Math.round(metricas.embarquesTotales * 0.1);
@@ -437,59 +453,59 @@ function generarReporte() {
     `Pendientes: ${metricas.embarquesPendientes}\n\n` +
     `Generado el: ${new Date().toLocaleString()}`;
 
-  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const enlace = document.createElement("a");
+  const enlace = document.createElement('a');
   enlace.href = url;
   enlace.download = `reporte_estadisticas_${
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split('T')[0]
   }.txt`;
   enlace.click();
   URL.revokeObjectURL(url);
-  mostrarToast("Reporte generado exitosamente", "success");
+  mostrarToast('Reporte generado exitosamente', 'success');
 }
 
 function guardarMetricas() {
   // Los datos se mantienen en la variable metricas en memoria
   // No se usa localStorage, los datos persisten durante la sesión
   console.log(
-    "Métricas guardadas en memoria:",
+    'Métricas guardadas en memoria:',
     Object.keys(metricas).length,
-    "indicadores"
+    'indicadores',
   );
 }
 
 function calcularEficiencia() {
   if (!metricas.embarquesTotales || metricas.embarquesTotales === 0)
-    return "0%";
+    return '0%';
   const eficiencia =
     ((metricas.embarquesTotales - (metricas.incidentes || 0)) /
       metricas.embarquesTotales) *
     100;
-  return eficiencia.toFixed(1) + "%";
+  return eficiencia.toFixed(1) + '%';
 }
 
 // Toast
-function mostrarToast(mensaje, tipo = "info") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'info') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
   if (!toast || !toastMessage) return;
   toastMessage.textContent = mensaje;
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") toast.classList.add("bg-green-500", "text-white");
-  else if (tipo === "error") toast.classList.add("bg-red-500", "text-white");
-  else if (tipo === "info") toast.classList.add("bg-blue-500", "text-white");
-  else toast.classList.add("bg-gray-500", "text-white");
-  toast.classList.remove("hidden");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') toast.classList.add('bg-green-500', 'text-white');
+  else if (tipo === 'error') toast.classList.add('bg-red-500', 'text-white');
+  else if (tipo === 'info') toast.classList.add('bg-blue-500', 'text-white');
+  else toast.classList.add('bg-gray-500', 'text-white');
+  toast.classList.remove('hidden');
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
-  if (toast) toast.classList.add("hidden");
+  const toast = document.getElementById('toast');
+  if (toast) toast.classList.add('hidden');
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  const toastClose = document.getElementById("toast-close");
-  if (toastClose) toastClose.addEventListener("click", ocultarToast);
+document.addEventListener('DOMContentLoaded', function () {
+  const toastClose = document.getElementById('toast-close');
+  if (toastClose) toastClose.addEventListener('click', ocultarToast);
 });

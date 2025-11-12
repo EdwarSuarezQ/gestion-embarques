@@ -1,14 +1,39 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let personal = [];
 
-function inicializar() {
-  renderizarPersonal();
+async function inicializar() {
   configurarEventosGlobales();
+  await cargarPersonal();
+}
+
+async function cargarPersonal() {
+  try {
+    const res = await api.get('/personal');
+    const payload = res && res.data ? res.data : res;
+    if (payload && Array.isArray(payload.items))
+      personal = payload.items.map(mapServerPersonal);
+    else if (Array.isArray(payload)) personal = payload.map(mapServerPersonal);
+    else personal = [];
+    renderizarPersonal();
+    actualizarTodo();
+  } catch (err) {
+    console.error('Error cargando personal', err);
+  }
+}
+
+function mapServerPersonal(p) {
+  if (!p) return p;
+  const copy = Object.assign({}, p);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
 }
 
 function renderizarPersonal() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -31,7 +56,7 @@ function crearEstructuraCompleta() {
   const variacionPersonal = calcularVariacionPersonal();
 
   return `
-    <div class="personal-module"> 
+    <div class="personal-module">
         <!-- Estadísticas -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-blue-500">
@@ -46,12 +71,12 @@ function crearEstructuraCompleta() {
                 </div>
                 <div class="mt-2 text-sm">
                     <span class="${
-                      variacionPersonal >= 0 ? "text-green-600" : "text-red-600"
+                      variacionPersonal >= 0 ? 'text-green-600' : 'text-red-600'
                     }">
                         <i class="fas ${
                           variacionPersonal >= 0
-                            ? "fa-arrow-up"
-                            : "fa-arrow-down"
+                            ? 'fa-arrow-up'
+                            : 'fa-arrow-down'
                         }"></i> ${Math.abs(variacionPersonal)}%
                     </span>
                     vs. trimestre anterior
@@ -71,13 +96,13 @@ function crearEstructuraCompleta() {
                 <div class="mt-2 text-sm">
                     <span class="${
                       porcentajeActivos > 80
-                        ? "text-green-600"
-                        : "text-yellow-600"
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
                     }">
                         <i class="fas ${
                           porcentajeActivos > 80
-                            ? "fa-arrow-up"
-                            : "fa-arrow-down"
+                            ? 'fa-arrow-up'
+                            : 'fa-arrow-down'
                         }"></i> ${porcentajeActivos}%
                     </span>
                     tasa de actividad
@@ -185,7 +210,7 @@ function crearEstructuraCompleta() {
 }
 
 function calcularEstadisticas() {
-  const activos = personal.filter((p) => p.estado === "active").length;
+  const activos = personal.filter((p) => p.estado === 'active').length;
   const departamentos = [...new Set(personal.map((p) => p.departamento))]
     .length;
   const promedioPorDepto =
@@ -206,7 +231,7 @@ function calcularVariacionPersonal() {
 
   if (personalAnterior === 0) return 0;
   return Math.round(
-    ((personalActual - personalAnterior) / personalAnterior) * 100
+    ((personalActual - personalAnterior) / personalAnterior) * 100,
   );
 }
 
@@ -225,55 +250,55 @@ function actualizarTarjetasEstadisticas() {
 
   // Actualizar tarjeta de total empleados
   const tarjetaTotal = document.querySelector(
-    ".bg-white.border-l-4.border-blue-500"
+    '.bg-white.border-l-4.border-blue-500',
   );
   if (tarjetaTotal) {
-    tarjetaTotal.querySelector("h2").textContent = total;
-    const porcentajeElement = tarjetaTotal.querySelector(".text-sm span");
+    tarjetaTotal.querySelector('h2').textContent = total;
+    const porcentajeElement = tarjetaTotal.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionPersonal >= 0 ? "text-green-600" : "text-red-600"
+      variacionPersonal >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionPersonal >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionPersonal >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionPersonal)}% vs. trimestre anterior`;
   }
 
   // Actualizar tarjeta de empleados activos
   const tarjetaActivos = document.querySelector(
-    ".bg-white.border-l-4.border-green-500"
+    '.bg-white.border-l-4.border-green-500',
   );
   if (tarjetaActivos) {
-    tarjetaActivos.querySelector("h2").textContent = stats.activos;
-    const porcentajeElement = tarjetaActivos.querySelector(".text-sm span");
+    tarjetaActivos.querySelector('h2').textContent = stats.activos;
+    const porcentajeElement = tarjetaActivos.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      porcentajeActivos > 80 ? "text-green-600" : "text-yellow-600"
+      porcentajeActivos > 80 ? 'text-green-600' : 'text-yellow-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      porcentajeActivos > 80 ? "fa-arrow-up" : "fa-arrow-down"
+      porcentajeActivos > 80 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${porcentajeActivos}% tasa de actividad`;
   }
 
   // Actualizar tarjeta de departamentos
   const tarjetaDeptos = document.querySelector(
-    ".bg-white.border-l-4.border-purple-500"
+    '.bg-white.border-l-4.border-purple-500',
   );
   if (tarjetaDeptos) {
-    tarjetaDeptos.querySelector("h2").textContent = stats.departamentos;
-    const porcentajeElement = tarjetaDeptos.querySelector(".text-sm span");
+    tarjetaDeptos.querySelector('h2').textContent = stats.departamentos;
+    const porcentajeElement = tarjetaDeptos.querySelector('.text-sm span');
     porcentajeElement.innerHTML = `<i class="fas fa-chart-bar"></i> ${stats.promedioPorDepto} promedio por depto`;
   }
 }
 
 function renderizarTablaPersonal() {
-  const tableBody = document.getElementById("personal-table-body");
+  const tableBody = document.getElementById('personal-table-body');
   if (!tableBody) {
-    console.error("No se encontró personal-table-body");
+    console.error('No se encontró personal-table-body');
     return;
   }
 
   tableBody.innerHTML = personal
     .map((persona) => renderFilaPersonal(persona))
-    .join("");
+    .join('');
 }
 
 function renderFilaPersonal(persona) {
@@ -283,16 +308,16 @@ function renderFilaPersonal(persona) {
       <td class="px-6 py-4 whitespace-nowrap">
         <div class="flex items-center">
           <div class="h-10 w-10 rounded-full ${getColorIniciales(
-            persona.nombre
+            persona.nombre,
           )} flex items-center justify-center text-white font-semibold">
             ${iniciales}
           </div>
           <div class="ml-4">
             <div class="text-sm font-medium text-gray-900">${escapeHtml(
-              persona.nombre
+              persona.nombre,
             )}</div>
             <div class="text-sm text-gray-500">${escapeHtml(
-              persona.email
+              persona.email,
             )}</div>
           </div>
         </div>
@@ -302,7 +327,7 @@ function renderFilaPersonal(persona) {
       </td>
       <td class="px-6 py-4 whitespace-nowrap">
         <div class="text-sm text-gray-900">${escapeHtml(
-          persona.departamento
+          persona.departamento,
         )}</div>
       </td>
       <td class="px-6 py-4 whitespace-nowrap">
@@ -327,67 +352,67 @@ function renderFilaPersonal(persona) {
 }
 
 function actualizarEstadisticasDepartamentos() {
-  const container = document.getElementById("estadisticas-departamentos");
+  const container = document.getElementById('estadisticas-departamentos');
   if (!container) return;
 
   const departamentos = {
     Logística: {
-      nombre: "Logística",
-      color: "blue",
-      cantidad: personal.filter((p) => p.departamento === "Logística").length,
+      nombre: 'Logística',
+      color: 'blue',
+      cantidad: personal.filter((p) => p.departamento === 'Logística').length,
     },
-    "Gestión de Documentos": {
-      nombre: "Gestión de Documentos",
-      color: "green",
+    'Gestión de Documentos': {
+      nombre: 'Gestión de Documentos',
+      color: 'green',
       cantidad: personal.filter(
-        (p) => p.departamento === "Gestión de Documentos"
+        (p) => p.departamento === 'Gestión de Documentos',
       ).length,
     },
-    "Operaciones Portuarias": {
-      nombre: "Operaciones Portuarias",
-      color: "yellow",
+    'Operaciones Portuarias': {
+      nombre: 'Operaciones Portuarias',
+      color: 'yellow',
       cantidad: personal.filter(
-        (p) => p.departamento === "Operaciones Portuarias"
+        (p) => p.departamento === 'Operaciones Portuarias',
       ).length,
     },
     Mantenimiento: {
-      nombre: "Mantenimiento",
-      color: "purple",
-      cantidad: personal.filter((p) => p.departamento === "Mantenimiento")
+      nombre: 'Mantenimiento',
+      color: 'purple',
+      cantidad: personal.filter((p) => p.departamento === 'Mantenimiento')
         .length,
     },
     Administración: {
-      nombre: "Administración",
-      color: "red",
-      cantidad: personal.filter((p) => p.departamento === "Administración")
+      nombre: 'Administración',
+      color: 'red',
+      cantidad: personal.filter((p) => p.departamento === 'Administración')
         .length,
     },
-    "Recursos Humanos": {
-      nombre: "Recursos Humanos",
-      color: "pink",
-      cantidad: personal.filter((p) => p.departamento === "Recursos Humanos")
+    'Recursos Humanos': {
+      nombre: 'Recursos Humanos',
+      color: 'pink',
+      cantidad: personal.filter((p) => p.departamento === 'Recursos Humanos')
         .length,
     },
     Finanzas: {
-      nombre: "Finanzas",
-      color: "indigo",
-      cantidad: personal.filter((p) => p.departamento === "Finanzas").length,
+      nombre: 'Finanzas',
+      color: 'indigo',
+      cantidad: personal.filter((p) => p.departamento === 'Finanzas').length,
     },
-    "TI y Sistemas": {
-      nombre: "TI y Sistemas",
-      color: "teal",
-      cantidad: personal.filter((p) => p.departamento === "TI y Sistemas")
+    'TI y Sistemas': {
+      nombre: 'TI y Sistemas',
+      color: 'teal',
+      cantidad: personal.filter((p) => p.departamento === 'TI y Sistemas')
         .length,
     },
     Seguridad: {
-      nombre: "Seguridad",
-      color: "gray",
-      cantidad: personal.filter((p) => p.departamento === "Seguridad").length,
+      nombre: 'Seguridad',
+      color: 'gray',
+      cantidad: personal.filter((p) => p.departamento === 'Seguridad').length,
     },
     Calidad: {
-      nombre: "Calidad",
-      color: "orange",
-      cantidad: personal.filter((p) => p.departamento === "Calidad").length,
+      nombre: 'Calidad',
+      color: 'orange',
+      cantidad: personal.filter((p) => p.departamento === 'Calidad').length,
     },
   };
 
@@ -410,13 +435,13 @@ function actualizarEstadisticasDepartamentos() {
       }%"></div>
       </div>
     </div>
-  `
+  `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarNuevosIngresos() {
-  const container = document.getElementById("nuevos-ingresos");
+  const container = document.getElementById('nuevos-ingresos');
   if (!container) return;
 
   const nuevos = personal
@@ -429,42 +454,42 @@ function actualizarNuevosIngresos() {
       (persona) => `
       <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
         <div class="h-10 w-10 rounded-full ${getColorIniciales(
-          persona.nombre
+          persona.nombre,
         )} flex items-center justify-center text-white font-semibold mr-3">
           ${getIniciales(persona.nombre)}
         </div>
         <div class="flex-1">
           <h3 class="text-sm font-medium">${escapeHtml(persona.nombre)}</h3>
           <p class="text-xs text-gray-500">${escapeHtml(
-            persona.puesto
+            persona.puesto,
           )} - ${escapeHtml(persona.departamento)}</p>
         </div>
         <span class="status-badge status-${
           persona.estado
         } border">${getEstadoText(persona.estado)}</span>
       </div>
-    `
+    `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventosGlobales() {
   // Configurar eventos del modal
-  const modal = document.getElementById("modal");
-  const modalClose = document.getElementById("modal-close");
-  const modalCancel = document.getElementById("modal-cancel");
+  const modal = document.getElementById('modal');
+  const modalClose = document.getElementById('modal-close');
+  const modalCancel = document.getElementById('modal-cancel');
 
   if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
+    modalClose.addEventListener('click', ocultarModal);
   }
 
   if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
+    modalCancel.addEventListener('click', ocultarModal);
   }
 
   // Cerrar modal al hacer clic fuera
   if (modal) {
-    modal.addEventListener("click", function (e) {
+    modal.addEventListener('click', function (e) {
       if (e.target === modal) {
         ocultarModal();
       }
@@ -472,16 +497,16 @@ function configurarEventosGlobales() {
   }
 
   // Configurar toast
-  const toastClose = document.getElementById("toast-close");
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 
   // Usar event delegation para el botón de nuevo empleado
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-nuevo-personal" ||
-      e.target.closest("#btn-nuevo-personal")
+      e.target.id === 'btn-nuevo-personal' ||
+      e.target.closest('#btn-nuevo-personal')
     ) {
       mostrarModalCrear();
     }
@@ -489,49 +514,49 @@ function configurarEventosGlobales() {
 }
 
 function configurarEventosTabla() {
-  const tableBody = document.getElementById("personal-table-body");
+  const tableBody = document.getElementById('personal-table-body');
   if (!tableBody) return;
 
   // Usar event delegation para los botones de editar y eliminar
-  tableBody.addEventListener("click", (e) => {
+  tableBody.addEventListener('click', (e) => {
     const target = e.target;
-    const editBtn = target.closest(".edit-personal-btn");
-    const deleteBtn = target.closest(".delete-personal-btn");
+    const editBtn = target.closest('.edit-personal-btn');
+    const deleteBtn = target.closest('.delete-personal-btn');
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarPersonal(id);
     }
   });
 
   // Configurar filtros
-  const filtroDepartamento = document.getElementById("filtro-departamento");
-  const filtroEstado = document.getElementById("filtro-estado");
-  const buscarPersonal = document.getElementById("buscar-personal");
+  const filtroDepartamento = document.getElementById('filtro-departamento');
+  const filtroEstado = document.getElementById('filtro-estado');
+  const buscarPersonal = document.getElementById('buscar-personal');
 
   if (filtroDepartamento) {
-    filtroDepartamento.addEventListener("change", aplicarFiltros);
+    filtroDepartamento.addEventListener('change', aplicarFiltros);
   }
   if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
   }
   if (buscarPersonal) {
-    buscarPersonal.addEventListener("input", aplicarFiltros);
+    buscarPersonal.addEventListener('input', aplicarFiltros);
   }
 }
 
 function aplicarFiltros() {
   const filtroDepartamento = document.getElementById(
-    "filtro-departamento"
+    'filtro-departamento',
   )?.value;
-  const filtroEstado = document.getElementById("filtro-estado")?.value;
+  const filtroEstado = document.getElementById('filtro-estado')?.value;
   const textoBusqueda = document
-    .getElementById("buscar-personal")
+    .getElementById('buscar-personal')
     ?.value.toLowerCase();
 
   let personalFiltrado = personal;
@@ -539,24 +564,24 @@ function aplicarFiltros() {
   if (filtroDepartamento) {
     personalFiltrado = personalFiltrado.filter(
       (p) =>
-        (p.departamento || "").toLowerCase() ===
-        filtroDepartamento.toLowerCase()
+        (p.departamento || '').toLowerCase() ===
+        filtroDepartamento.toLowerCase(),
     );
   }
 
   if (filtroEstado) {
     personalFiltrado = personalFiltrado.filter(
-      (p) => (p.estado || "").toLowerCase() === filtroEstado.toLowerCase()
+      (p) => (p.estado || '').toLowerCase() === filtroEstado.toLowerCase(),
     );
   }
 
   if (textoBusqueda) {
     personalFiltrado = personalFiltrado.filter(
       (p) =>
-        (p.nombre || "").toLowerCase().includes(textoBusqueda) ||
-        (p.email || "").toLowerCase().includes(textoBusqueda) ||
-        (p.puesto || "").toLowerCase().includes(textoBusqueda) ||
-        (p.departamento || "").toLowerCase().includes(textoBusqueda)
+        (p.nombre || '').toLowerCase().includes(textoBusqueda) ||
+        (p.email || '').toLowerCase().includes(textoBusqueda) ||
+        (p.puesto || '').toLowerCase().includes(textoBusqueda) ||
+        (p.departamento || '').toLowerCase().includes(textoBusqueda),
     );
   }
 
@@ -564,12 +589,12 @@ function aplicarFiltros() {
 }
 
 function renderizarTablaFiltrada(personalFiltrado) {
-  const tableBody = document.getElementById("personal-table-body");
+  const tableBody = document.getElementById('personal-table-body');
   if (!tableBody) return;
 
   tableBody.innerHTML = personalFiltrado
     .map((persona) => renderFilaPersonal(persona))
-    .join("");
+    .join('');
 }
 
 // Funciones auxiliares
@@ -578,16 +603,16 @@ function generarOpcionesDepartamentos() {
     ...new Set(personal.map((p) => p.departamento).filter(Boolean)),
   ];
   const opcionesPredefinidas = [
-    "Logística",
-    "Gestión de Documentos",
-    "Operaciones Portuarias",
-    "Mantenimiento",
-    "Administración",
-    "Recursos Humanos",
-    "Finanzas",
-    "TI y Sistemas",
-    "Seguridad",
-    "Calidad",
+    'Logística',
+    'Gestión de Documentos',
+    'Operaciones Portuarias',
+    'Mantenimiento',
+    'Administración',
+    'Recursos Humanos',
+    'Finanzas',
+    'TI y Sistemas',
+    'Seguridad',
+    'Calidad',
   ];
 
   // Combinar departamentos existentes con opciones predefinidas
@@ -597,32 +622,32 @@ function generarOpcionesDepartamentos() {
 
   return todosDepartamentos
     .map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`)
-    .join("");
+    .join('');
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
+  if (!text) return '';
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 function getIniciales(nombre) {
-  if (!nombre) return "??";
+  if (!nombre) return '??';
   return nombre
-    .split(" ")
-    .map((n) => n[0] || "")
-    .join("")
+    .split(' ')
+    .map((n) => n[0] || '')
+    .join('')
     .toUpperCase();
 }
 
 function getColorIniciales(nombre) {
   const colores = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-yellow-500",
-    "bg-purple-500",
-    "bg-red-500",
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-yellow-500',
+    'bg-purple-500',
+    'bg-red-500',
   ];
   const index =
     nombre && nombre.charCodeAt(0) ? nombre.charCodeAt(0) % colores.length : 0;
@@ -630,32 +655,32 @@ function getColorIniciales(nombre) {
 }
 
 function getEstadoText(estado) {
-  const map = { active: "Activo", inactive: "Inactivo" };
+  const map = { active: 'Activo', inactive: 'Inactivo' };
   return map[estado] || estado;
 }
 
 // Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
-  const modalTitle = document.getElementById("modal-title");
-  const modalBody = document.getElementById("modal-body");
-  const modalSave = document.getElementById("modal-save");
-  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalSave = document.getElementById('modal-save');
+  const modal = document.getElementById('modal');
 
   if (!modal || !modalTitle || !modalBody || !modalSave) {
-    console.error("Elementos del modal no encontrados");
+    console.error('Elementos del modal no encontrados');
     return;
   }
 
   modalTitle.textContent = titulo;
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
-  modal.classList.remove("hidden");
+  modal.classList.remove('hidden');
 }
 
 function ocultarModal() {
-  const modal = document.getElementById("modal");
+  const modal = document.getElementById('modal');
   if (modal) {
-    modal.classList.add("hidden");
+    modal.classList.add('hidden');
   }
 }
 
@@ -712,7 +737,7 @@ function mostrarModalCrear() {
         </div>
     `;
 
-  mostrarModal("Nuevo Empleado", campos, crearPersonal);
+  mostrarModal('Nuevo Empleado', campos, crearPersonal);
 }
 
 // ========================
@@ -720,37 +745,36 @@ function mostrarModalCrear() {
 // ========================
 
 // Crear nuevo personal
-function crearPersonal() {
-  const nombre = document.getElementById("create-nombre").value.trim();
-  const email = document.getElementById("create-email").value.trim();
-  const puesto = document.getElementById("create-puesto").value;
-  const departamento = document.getElementById("create-departamento").value;
+async function crearPersonal() {
+  const nombre = document.getElementById('create-nombre').value.trim();
+  const email = document.getElementById('create-email').value.trim();
+  const puesto = document.getElementById('create-puesto').value;
+  const departamento = document.getElementById('create-departamento').value;
 
   if (!nombre || !email || !puesto || !departamento) {
-    mostrarToast("Por favor, completa todos los campos obligatorios.", "error");
+    mostrarToast('Por favor, completa todos los campos obligatorios.', 'error');
     return;
   }
 
-  const nuevo = {
-    id: Date.now(),
-    nombre,
-    email,
-    puesto,
-    departamento,
-    estado: "active",
-  };
+  try {
+    const payload = { nombre, email, puesto, departamento, estado: 'active' };
+    const res = await api.post('/personal', payload);
+    const created = res && res.data ? res.data : res;
+    personal.push(mapServerPersonal(created));
 
-  personal.push(nuevo);
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  ocultarModal();
-  mostrarToast("Empleado agregado con éxito.", "success");
+    renderizarTablaPersonal();
+    actualizarTodo();
+    ocultarModal();
+    mostrarToast('Empleado agregado con éxito.', 'success');
+  } catch (err) {
+    console.error('Error creando personal', err);
+    mostrarToast('Error al crear empleado.', 'error');
+  }
 }
 
 // Mostrar modal de edición
 function mostrarModalEditar(id) {
-  const persona = personal.find((p) => p.id === id);
+  const persona = personal.find((p) => String(p.id) === String(id));
   if (!persona) return;
 
   const campos = `
@@ -758,13 +782,13 @@ function mostrarModalEditar(id) {
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
         <input type="text" id="edit-nombre" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="${escapeHtml(
-          persona.nombre
+          persona.nombre,
         )}" required>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
         <input type="email" id="edit-email" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="${escapeHtml(
-          persona.email
+          persona.email,
         )}" required>
       </div>
       <div>
@@ -772,51 +796,51 @@ function mostrarModalEditar(id) {
         <select id="edit-puesto" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
           <option value="">Seleccionar puesto...</option>
           <option value="Coordinador de Operaciones" ${
-            persona.puesto === "Coordinador de Operaciones" ? "selected" : ""
+            persona.puesto === 'Coordinador de Operaciones' ? 'selected' : ''
           }>Coordinador de Operaciones</option>
           <option value="Especialista en Aduanas" ${
-            persona.puesto === "Especialista en Aduanas" ? "selected" : ""
+            persona.puesto === 'Especialista en Aduanas' ? 'selected' : ''
           }>Especialista en Aduanas</option>
           <option value="Técnico de Mantenimiento" ${
-            persona.puesto === "Técnico de Mantenimiento" ? "selected" : ""
+            persona.puesto === 'Técnico de Mantenimiento' ? 'selected' : ''
           }>Técnico de Mantenimiento</option>
           <option value="Supervisora de Almacén" ${
-            persona.puesto === "Supervisora de Almacén" ? "selected" : ""
+            persona.puesto === 'Supervisora de Almacén' ? 'selected' : ''
           }>Supervisora de Almacén</option>
           <option value="Analista de Documentación" ${
-            persona.puesto === "Analista de Documentación" ? "selected" : ""
+            persona.puesto === 'Analista de Documentación' ? 'selected' : ''
           }>Analista de Documentación</option>
           <option value="Gerente de Logística" ${
-            persona.puesto === "Gerente de Logística" ? "selected" : ""
+            persona.puesto === 'Gerente de Logística' ? 'selected' : ''
           }>Gerente de Logística</option>
           <option value="Operador Portuario" ${
-            persona.puesto === "Operador Portuario" ? "selected" : ""
+            persona.puesto === 'Operador Portuario' ? 'selected' : ''
           }>Operador Portuario</option>
           <option value="Asistente Administrativo" ${
-            persona.puesto === "Asistente Administrativo" ? "selected" : ""
+            persona.puesto === 'Asistente Administrativo' ? 'selected' : ''
           }>Asistente Administrativo</option>
           <option value="Jefe de Turno" ${
-            persona.puesto === "Jefe de Turno" ? "selected" : ""
+            persona.puesto === 'Jefe de Turno' ? 'selected' : ''
           }>Jefe de Turno</option>
           <option value="Inspector de Calidad" ${
-            persona.puesto === "Inspector de Calidad" ? "selected" : ""
+            persona.puesto === 'Inspector de Calidad' ? 'selected' : ''
           }>Inspector de Calidad</option>
           ${
             persona.puesto &&
             ![
-              "Coordinador de Operaciones",
-              "Especialista en Aduanas",
-              "Técnico de Mantenimiento",
-              "Supervisora de Almacén",
-              "Analista de Documentación",
-              "Gerente de Logística",
-              "Operador Portuario",
-              "Asistente Administrativo",
-              "Jefe de Turno",
-              "Inspector de Calidad",
+              'Coordinador de Operaciones',
+              'Especialista en Aduanas',
+              'Técnico de Mantenimiento',
+              'Supervisora de Almacén',
+              'Analista de Documentación',
+              'Gerente de Logística',
+              'Operador Portuario',
+              'Asistente Administrativo',
+              'Jefe de Turno',
+              'Inspector de Calidad',
             ].includes(persona.puesto)
               ? `<option value="${persona.puesto}" selected>${persona.puesto}</option>`
-              : ""
+              : ''
           }
         </select>
       </div>
@@ -825,51 +849,51 @@ function mostrarModalEditar(id) {
         <select id="edit-departamento" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
           <option value="">Seleccionar departamento...</option>
           <option value="Logística" ${
-            persona.departamento === "Logística" ? "selected" : ""
+            persona.departamento === 'Logística' ? 'selected' : ''
           }>Logística</option>
           <option value="Gestión de Documentos" ${
-            persona.departamento === "Gestión de Documentos" ? "selected" : ""
+            persona.departamento === 'Gestión de Documentos' ? 'selected' : ''
           }>Gestión de Documentos</option>
           <option value="Operaciones Portuarias" ${
-            persona.departamento === "Operaciones Portuarias" ? "selected" : ""
+            persona.departamento === 'Operaciones Portuarias' ? 'selected' : ''
           }>Operaciones Portuarias</option>
           <option value="Mantenimiento" ${
-            persona.departamento === "Mantenimiento" ? "selected" : ""
+            persona.departamento === 'Mantenimiento' ? 'selected' : ''
           }>Mantenimiento</option>
           <option value="Administración" ${
-            persona.departamento === "Administración" ? "selected" : ""
+            persona.departamento === 'Administración' ? 'selected' : ''
           }>Administración</option>
           <option value="Recursos Humanos" ${
-            persona.departamento === "Recursos Humanos" ? "selected" : ""
+            persona.departamento === 'Recursos Humanos' ? 'selected' : ''
           }>Recursos Humanos</option>
           <option value="Finanzas" ${
-            persona.departamento === "Finanzas" ? "selected" : ""
+            persona.departamento === 'Finanzas' ? 'selected' : ''
           }>Finanzas</option>
           <option value="TI y Sistemas" ${
-            persona.departamento === "TI y Sistemas" ? "selected" : ""
+            persona.departamento === 'TI y Sistemas' ? 'selected' : ''
           }>TI y Sistemas</option>
           <option value="Seguridad" ${
-            persona.departamento === "Seguridad" ? "selected" : ""
+            persona.departamento === 'Seguridad' ? 'selected' : ''
           }>Seguridad</option>
           <option value="Calidad" ${
-            persona.departamento === "Calidad" ? "selected" : ""
+            persona.departamento === 'Calidad' ? 'selected' : ''
           }>Calidad</option>
           ${
             persona.departamento &&
             ![
-              "Logística",
-              "Gestión de Documentos",
-              "Operaciones Portuarias",
-              "Mantenimiento",
-              "Administración",
-              "Recursos Humanos",
-              "Finanzas",
-              "TI y Sistemas",
-              "Seguridad",
-              "Calidad",
+              'Logística',
+              'Gestión de Documentos',
+              'Operaciones Portuarias',
+              'Mantenimiento',
+              'Administración',
+              'Recursos Humanos',
+              'Finanzas',
+              'TI y Sistemas',
+              'Seguridad',
+              'Calidad',
             ].includes(persona.departamento)
               ? `<option value="${persona.departamento}" selected>${persona.departamento}</option>`
-              : ""
+              : ''
           }
         </select>
       </div>
@@ -877,83 +901,97 @@ function mostrarModalEditar(id) {
         <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
         <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
           <option value="active" ${
-            persona.estado === "active" ? "selected" : ""
+            persona.estado === 'active' ? 'selected' : ''
           }>Activo</option>
           <option value="inactive" ${
-            persona.estado === "inactive" ? "selected" : ""
+            persona.estado === 'inactive' ? 'selected' : ''
           }>Inactivo</option>
         </select>
       </div>
     </div>
   `;
 
-  mostrarModal("Editar Empleado", campos, () => editarPersonal(id));
+  mostrarModal('Editar Empleado', campos, () => editarPersonal(id));
 }
 
-// Editar empleado
-function editarPersonal(id) {
-  const persona = personal.find((p) => p.id === id);
-  if (!persona) return;
+// Editar empleado (usa API)
+async function editarPersonal(id) {
+  try {
+    const personaLocal = personal.find((p) => String(p.id) === String(id));
+    if (!personaLocal) return;
 
-  persona.nombre = document.getElementById("edit-nombre").value.trim();
-  persona.email = document.getElementById("edit-email").value.trim();
-  persona.puesto = document.getElementById("edit-puesto").value.trim();
-  persona.departamento = document
-    .getElementById("edit-departamento")
-    .value.trim();
-  persona.estado = document.getElementById("edit-estado").value;
+    const payload = {
+      nombre: document.getElementById('edit-nombre').value.trim(),
+      email: document.getElementById('edit-email').value.trim(),
+      puesto: document.getElementById('edit-puesto').value.trim(),
+      departamento: document.getElementById('edit-departamento').value.trim(),
+      estado: document.getElementById('edit-estado').value,
+    };
 
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  ocultarModal();
-  mostrarToast("Empleado actualizado correctamente.", "success");
+    const res = await api.put(`/personal/${id}`, payload);
+    const updated = res && res.data ? res.data : res;
+    const mapped = mapServerPersonal(updated);
+
+    // Reemplazar en arreglo local
+    personal = personal.map((p) => (String(p.id) === String(id) ? mapped : p));
+
+    renderizarTablaPersonal();
+    actualizarTodo();
+    ocultarModal();
+    mostrarToast('Empleado actualizado correctamente.', 'success');
+  } catch (err) {
+    console.error('Error actualizando personal', err);
+    mostrarToast('Error al actualizar empleado.', 'error');
+  }
 }
 
-// Eliminar empleado
-function eliminarPersonal(id) {
-  if (!confirm("¿Seguro que deseas eliminar este empleado?")) return;
-
-  personal = personal.filter((p) => p.id !== id);
-  guardarPersonal();
-  renderizarTablaPersonal();
-  actualizarTodo();
-  mostrarToast("Empleado eliminado.", "success");
+// Eliminar empleado (usa API)
+async function eliminarPersonal(id) {
+  if (!confirm('¿Seguro que deseas eliminar este empleado?')) return;
+  try {
+    await api.delete(`/personal/${id}`);
+    personal = personal.filter((p) => String(p.id) !== String(id));
+    renderizarTablaPersonal();
+    actualizarTodo();
+    mostrarToast('Empleado eliminado.', 'success');
+  } catch (err) {
+    console.error('Error eliminando personal', err);
+    mostrarToast('Error al eliminar empleado.', 'error');
+  }
 }
 
 function guardarPersonal() {
-  // Los datos se mantienen en el arreglo personal en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log("Personal guardado en memoria:", personal.length, "elementos");
+  // Ahora usamos la API para persistir cambios. Esta función queda como registro local.
+  console.log('Personal (local) actualizado. Elementos:', personal.length);
 }
 
 // Toast
-function mostrarToast(mensaje, tipo = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
-  if (toast) toast.classList.add("hidden");
+  const toast = document.getElementById('toast');
+  if (toast) toast.classList.add('hidden');
 }
 
 inicializar();

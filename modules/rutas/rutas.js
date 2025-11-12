@@ -1,26 +1,27 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let rutas = [];
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarRutas();
+async function inicializarModulo() {
+  console.log('Inicializando módulo...');
   configurarEventosGlobales();
+  await cargarRutas();
 }
 
 // Auto-inicialización cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", inicializarModulo);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarModulo);
 } else {
   // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
 }
 
 function renderizarRutas() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
 
@@ -33,6 +34,28 @@ function renderizarRutas() {
     actualizarTodo();
     configurarEventosTabla();
   }, 100);
+}
+
+async function cargarRutas() {
+  try {
+    const res = await api.get('/rutas');
+    const payload = res && res.data ? res.data : res;
+    if (payload && Array.isArray(payload.items))
+      rutas = payload.items.map(mapServerRuta);
+    else if (Array.isArray(payload)) rutas = payload.map(mapServerRuta);
+    else rutas = [];
+    renderizarRutas();
+    actualizarTodo();
+  } catch (err) {
+    console.error('Error cargando rutas', err);
+  }
+}
+
+function mapServerRuta(r) {
+  if (!r) return r;
+  const copy = Object.assign({}, r);
+  if (!copy.id && copy._id) copy.id = copy._id;
+  return copy;
 }
 
 function crearEstructuraCompleta() {
@@ -61,13 +84,13 @@ function crearEstructuraCompleta() {
                 <div class="mt-2 text-sm">
                     <span class="${
                       porcentajeActivas > 50
-                        ? "text-green-600"
-                        : "text-yellow-600"
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
                     }">
                         <i class="fas ${
                           porcentajeActivas > 50
-                            ? "fa-arrow-up"
-                            : "fa-arrow-down"
+                            ? 'fa-arrow-up'
+                            : 'fa-arrow-down'
                         }"></i> ${porcentajeActivas}%
                     </span>
                     del total
@@ -89,15 +112,15 @@ function crearEstructuraCompleta() {
                 <div class="mt-2 text-sm">
                     <span class="${
                       stats.distanciaPromedio > 5000
-                        ? "text-green-600"
-                        : "text-blue-600"
+                        ? 'text-green-600'
+                        : 'text-blue-600'
                     }">
                         <i class="fas ${
                           stats.distanciaPromedio > 5000
-                            ? "fa-arrow-up"
-                            : "fa-arrow-right"
+                            ? 'fa-arrow-up'
+                            : 'fa-arrow-right'
                         }"></i> ${
-    stats.distanciaPromedio > 5000 ? "Larga" : "Media"
+    stats.distanciaPromedio > 5000 ? 'Larga' : 'Media'
   }
                     </span>
                     distancia
@@ -116,10 +139,10 @@ function crearEstructuraCompleta() {
                 </div>
                 <div class="mt-2 text-sm">
                     <span class="${
-                      variacionViajes >= 0 ? "text-green-600" : "text-red-600"
+                      variacionViajes >= 0 ? 'text-green-600' : 'text-red-600'
                     }">
                         <i class="fas ${
-                          variacionViajes >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+                          variacionViajes >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
                         }"></i> ${Math.abs(variacionViajes)}%
                     </span>
                     vs. promedio
@@ -212,11 +235,11 @@ function crearEstructuraCompleta() {
 }
 
 function calcularEstadisticas() {
-  const rutasActivas = rutas.filter((r) => r.estado === "active").length;
+  const rutasActivas = rutas.filter((r) => r.estado === 'active').length;
   const rutasTotales = rutas.length;
 
   const distanciaTotal = rutas.reduce((sum, r) => {
-    return sum + (parseInt(r.distancia.replace(/[^0-9]/g, "")) || 0);
+    return sum + (parseInt(r.distancia.replace(/[^0-9]/g, '')) || 0);
   }, 0);
 
   const distanciaPromedio =
@@ -257,60 +280,60 @@ function actualizarTarjetasEstadisticas() {
 
   // Actualizar tarjeta de rutas activas
   const tarjetaActivas = document.querySelector(
-    ".bg-white.border-l-4.border-purple-500"
+    '.bg-white.border-l-4.border-purple-500',
   );
   if (tarjetaActivas) {
-    tarjetaActivas.querySelector("h2").textContent = stats.rutasActivas;
-    const porcentajeElement = tarjetaActivas.querySelector(".text-sm span");
+    tarjetaActivas.querySelector('h2').textContent = stats.rutasActivas;
+    const porcentajeElement = tarjetaActivas.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      porcentajeActivas > 50 ? "text-green-600" : "text-yellow-600"
+      porcentajeActivas > 50 ? 'text-green-600' : 'text-yellow-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      porcentajeActivas > 50 ? "fa-arrow-up" : "fa-arrow-down"
+      porcentajeActivas > 50 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${porcentajeActivas}% del total`;
   }
 
   // Actualizar tarjeta de distancia promedio
   const tarjetaDistancia = document.querySelector(
-    ".bg-white.border-l-4.border-pink-500"
+    '.bg-white.border-l-4.border-pink-500',
   );
   if (tarjetaDistancia) {
     tarjetaDistancia.querySelector(
-      "h2"
+      'h2',
     ).textContent = `${stats.distanciaPromedio} nm`;
-    const porcentajeElement = tarjetaDistancia.querySelector(".text-sm span");
+    const porcentajeElement = tarjetaDistancia.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      stats.distanciaPromedio > 5000 ? "text-green-600" : "text-blue-600"
+      stats.distanciaPromedio > 5000 ? 'text-green-600' : 'text-blue-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      stats.distanciaPromedio > 5000 ? "fa-arrow-up" : "fa-arrow-right"
-    }"></i> ${stats.distanciaPromedio > 5000 ? "Larga" : "Media"} distancia`;
+      stats.distanciaPromedio > 5000 ? 'fa-arrow-up' : 'fa-arrow-right'
+    }"></i> ${stats.distanciaPromedio > 5000 ? 'Larga' : 'Media'} distancia`;
   }
 
   // Actualizar tarjeta de viajes
   const tarjetaViajes = document.querySelector(
-    ".bg-white.border-l-4.border-teal-500"
+    '.bg-white.border-l-4.border-teal-500',
   );
   if (tarjetaViajes) {
-    tarjetaViajes.querySelector("h2").textContent = stats.totalViajes;
-    const porcentajeElement = tarjetaViajes.querySelector(".text-sm span");
+    tarjetaViajes.querySelector('h2').textContent = stats.totalViajes;
+    const porcentajeElement = tarjetaViajes.querySelector('.text-sm span');
     porcentajeElement.className = `${
-      variacionViajes >= 0 ? "text-green-600" : "text-red-600"
+      variacionViajes >= 0 ? 'text-green-600' : 'text-red-600'
     }`;
     porcentajeElement.innerHTML = `<i class="fas ${
-      variacionViajes >= 0 ? "fa-arrow-up" : "fa-arrow-down"
+      variacionViajes >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'
     }"></i> ${Math.abs(variacionViajes)}% vs. promedio`;
   }
 }
 
 function renderizarTablaRutas() {
-  const tableBody = document.getElementById("rutas-table-body");
+  const tableBody = document.getElementById('rutas-table-body');
   if (!tableBody) {
-    console.error("No se encontró el table body para rutas");
+    console.error('No se encontró el table body para rutas');
     return;
   }
 
-  tableBody.innerHTML = rutas.map((ruta) => renderFilaRuta(ruta)).join("");
+  tableBody.innerHTML = rutas.map((ruta) => renderFilaRuta(ruta)).join('');
 }
 
 function renderFilaRuta(ruta) {
@@ -359,24 +382,24 @@ function renderFilaRuta(ruta) {
 }
 
 function actualizarEstadisticasTipo() {
-  const container = document.getElementById("estadisticas-tipo");
+  const container = document.getElementById('estadisticas-tipo');
   if (!container) return;
 
   const tipos = {
     international: {
-      nombre: "Internacional",
-      color: "blue",
-      cantidad: rutas.filter((r) => r.tipo === "international").length,
+      nombre: 'Internacional',
+      color: 'blue',
+      cantidad: rutas.filter((r) => r.tipo === 'international').length,
     },
     regional: {
-      nombre: "Regional",
-      color: "green",
-      cantidad: rutas.filter((r) => r.tipo === "regional").length,
+      nombre: 'Regional',
+      color: 'green',
+      cantidad: rutas.filter((r) => r.tipo === 'regional').length,
     },
     coastal: {
-      nombre: "Costera",
-      color: "yellow",
-      cantidad: rutas.filter((r) => r.tipo === "coastal").length,
+      nombre: 'Costera',
+      color: 'yellow',
+      cantidad: rutas.filter((r) => r.tipo === 'coastal').length,
     },
   };
 
@@ -401,17 +424,17 @@ function actualizarEstadisticasTipo() {
       }%"></div>
           </div>
         </div>
-      `
+      `,
     )
-    .join("");
+    .join('');
 }
 
 function actualizarProximasSalidas() {
-  const container = document.getElementById("proximas-salidas");
+  const container = document.getElementById('proximas-salidas');
   if (!container) return;
 
   const proximas = rutas
-    .filter((r) => r.estado === "active" || r.estado === "pending")
+    .filter((r) => r.estado === 'active' || r.estado === 'pending')
     .slice(0, 4);
 
   container.innerHTML = proximas
@@ -431,28 +454,28 @@ function actualizarProximasSalidas() {
             ruta.estado
           } border">${getEstadoText(ruta.estado)}</span>
         </div>
-      `
+      `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventosGlobales() {
   // Configurar eventos del modal
-  const modal = document.getElementById("modal");
-  const modalClose = document.getElementById("modal-close");
-  const modalCancel = document.getElementById("modal-cancel");
+  const modal = document.getElementById('modal');
+  const modalClose = document.getElementById('modal-close');
+  const modalCancel = document.getElementById('modal-cancel');
 
   if (modalClose) {
-    modalClose.addEventListener("click", ocultarModal);
+    modalClose.addEventListener('click', ocultarModal);
   }
 
   if (modalCancel) {
-    modalCancel.addEventListener("click", ocultarModal);
+    modalCancel.addEventListener('click', ocultarModal);
   }
 
   // Cerrar modal al hacer clic fuera
   if (modal) {
-    modal.addEventListener("click", function (e) {
+    modal.addEventListener('click', function (e) {
       if (e.target === modal) {
         ocultarModal();
       }
@@ -460,16 +483,16 @@ function configurarEventosGlobales() {
   }
 
   // Configurar toast
-  const toastClose = document.getElementById("toast-close");
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 
   // Usar event delegation para el botón de nueva ruta
-  document.addEventListener("click", function (e) {
+  document.addEventListener('click', function (e) {
     if (
-      e.target.id === "btn-nueva-ruta" ||
-      e.target.closest("#btn-nueva-ruta")
+      e.target.id === 'btn-nueva-ruta' ||
+      e.target.closest('#btn-nueva-ruta')
     ) {
       mostrarModalCrear();
     }
@@ -477,47 +500,47 @@ function configurarEventosGlobales() {
 }
 
 function configurarEventosTabla() {
-  const tableBody = document.getElementById("rutas-table-body");
+  const tableBody = document.getElementById('rutas-table-body');
   if (!tableBody) return;
 
   // Usar event delegation para los botones de editar y eliminar
-  tableBody.addEventListener("click", (e) => {
+  tableBody.addEventListener('click', (e) => {
     const target = e.target;
-    const editBtn = target.closest(".edit-ruta-btn");
-    const deleteBtn = target.closest(".delete-ruta-btn");
+    const editBtn = target.closest('.edit-ruta-btn');
+    const deleteBtn = target.closest('.delete-ruta-btn');
 
     if (editBtn) {
-      const id = parseInt(editBtn.dataset.id);
+      const id = editBtn.dataset.id;
       mostrarModalEditar(id);
     }
 
     if (deleteBtn) {
-      const id = parseInt(deleteBtn.dataset.id);
+      const id = deleteBtn.dataset.id;
       eliminarRuta(id);
     }
   });
 
   // Configurar filtros
-  const filtroEstado = document.getElementById("filtro-estado");
-  const filtroTipo = document.getElementById("filtro-tipo");
-  const buscarRutas = document.getElementById("buscar-rutas");
+  const filtroEstado = document.getElementById('filtro-estado');
+  const filtroTipo = document.getElementById('filtro-tipo');
+  const buscarRutas = document.getElementById('buscar-rutas');
 
   if (filtroEstado) {
-    filtroEstado.addEventListener("change", aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
   }
   if (filtroTipo) {
-    filtroTipo.addEventListener("change", aplicarFiltros);
+    filtroTipo.addEventListener('change', aplicarFiltros);
   }
   if (buscarRutas) {
-    buscarRutas.addEventListener("input", aplicarFiltros);
+    buscarRutas.addEventListener('input', aplicarFiltros);
   }
 }
 
 function aplicarFiltros() {
-  const filtroEstado = document.getElementById("filtro-estado")?.value;
-  const filtroTipo = document.getElementById("filtro-tipo")?.value;
+  const filtroEstado = document.getElementById('filtro-estado')?.value;
+  const filtroTipo = document.getElementById('filtro-tipo')?.value;
   const textoBusqueda = document
-    .getElementById("buscar-rutas")
+    .getElementById('buscar-rutas')
     ?.value.toLowerCase();
 
   let rutasFiltradas = rutas;
@@ -536,7 +559,7 @@ function aplicarFiltros() {
         r.idRuta.toLowerCase().includes(textoBusqueda) ||
         r.nombre.toLowerCase().includes(textoBusqueda) ||
         r.origen.toLowerCase().includes(textoBusqueda) ||
-        r.destino.toLowerCase().includes(textoBusqueda)
+        r.destino.toLowerCase().includes(textoBusqueda),
     );
   }
 
@@ -544,12 +567,12 @@ function aplicarFiltros() {
 }
 
 function renderizarTablaFiltrada(rutasFiltradas) {
-  const tableBody = document.getElementById("rutas-table-body");
+  const tableBody = document.getElementById('rutas-table-body');
   if (!tableBody) return;
 
   tableBody.innerHTML = rutasFiltradas
     .map((ruta) => renderFilaRuta(ruta))
-    .join("");
+    .join('');
 }
 
 // Funciones auxiliares
@@ -570,36 +593,36 @@ function getBadgeTipoRuta(tipo) {
 
 function getEstadoText(estado) {
   const estados = {
-    active: "Activa",
-    pending: "Pendiente",
-    completed: "Completada",
-    inactive: "Inactiva",
+    active: 'Activa',
+    pending: 'Pendiente',
+    completed: 'Completada',
+    inactive: 'Inactiva',
   };
   return estados[estado] || estado;
 }
 
 // Funciones para el modal
 function mostrarModal(titulo, contenido, callbackConfirmar) {
-  const modalTitle = document.getElementById("modal-title");
-  const modalBody = document.getElementById("modal-body");
-  const modalSave = document.getElementById("modal-save");
-  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalSave = document.getElementById('modal-save');
+  const modal = document.getElementById('modal');
 
   if (!modal || !modalTitle || !modalBody || !modalSave) {
-    console.error("Elementos del modal no encontrados");
+    console.error('Elementos del modal no encontrados');
     return;
   }
 
   modalTitle.textContent = titulo;
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
-  modal.classList.remove("hidden");
+  modal.classList.remove('hidden');
 }
 
 function ocultarModal() {
-  const modal = document.getElementById("modal");
+  const modal = document.getElementById('modal');
   if (modal) {
-    modal.classList.add("hidden");
+    modal.classList.add('hidden');
   }
 }
 
@@ -670,11 +693,11 @@ function mostrarModalCrear() {
         </div>
     `;
 
-  mostrarModal("Nueva Ruta", campos, crearRuta);
+  mostrarModal('Nueva Ruta', campos, crearRuta);
 }
 
 function mostrarModalEditar(id) {
-  const ruta = rutas.find((r) => r.id === id);
+  const ruta = rutas.find((r) => String(r.id) === String(id));
   if (!ruta) return;
 
   const campos = `
@@ -739,13 +762,13 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Ruta *</label>
                     <select id="edit-tipo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="international" ${
-                          ruta.tipo === "international" ? "selected" : ""
+                          ruta.tipo === 'international' ? 'selected' : ''
                         }>Internacional</option>
                         <option value="regional" ${
-                          ruta.tipo === "regional" ? "selected" : ""
+                          ruta.tipo === 'regional' ? 'selected' : ''
                         }>Regional</option>
                         <option value="coastal" ${
-                          ruta.tipo === "coastal" ? "selected" : ""
+                          ruta.tipo === 'coastal' ? 'selected' : ''
                         }>Costera</option>
                     </select>
                 </div>
@@ -753,16 +776,16 @@ function mostrarModalEditar(id) {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                     <select id="edit-estado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                         <option value="active" ${
-                          ruta.estado === "active" ? "selected" : ""
+                          ruta.estado === 'active' ? 'selected' : ''
                         }>Activa</option>
                         <option value="pending" ${
-                          ruta.estado === "pending" ? "selected" : ""
+                          ruta.estado === 'pending' ? 'selected' : ''
                         }>Pendiente</option>
                         <option value="completed" ${
-                          ruta.estado === "completed" ? "selected" : ""
+                          ruta.estado === 'completed' ? 'selected' : ''
                         }>Completada</option>
                         <option value="inactive" ${
-                          ruta.estado === "inactive" ? "selected" : ""
+                          ruta.estado === 'inactive' ? 'selected' : ''
                         }>Inactiva</option>
                     </select>
                 </div>
@@ -776,17 +799,17 @@ function mostrarModalEditar(id) {
         </div>
     `;
 
-  mostrarModal("Editar Ruta", campos, editarRuta);
+  mostrarModal('Editar Ruta', campos, editarRuta);
 }
 
-function crearRuta() {
-  const idRuta = document.getElementById("create-idRuta")?.value.trim();
-  const nombre = document.getElementById("create-nombre")?.value.trim();
-  const origen = document.getElementById("create-origen")?.value.trim();
-  const paisOrigen = document.getElementById("create-paisOrigen")?.value.trim();
-  const destino = document.getElementById("create-destino")?.value.trim();
+async function crearRuta() {
+  const idRuta = document.getElementById('create-idRuta')?.value.trim();
+  const nombre = document.getElementById('create-nombre')?.value.trim();
+  const origen = document.getElementById('create-origen')?.value.trim();
+  const paisOrigen = document.getElementById('create-paisOrigen')?.value.trim();
+  const destino = document.getElementById('create-destino')?.value.trim();
   const paisDestino = document
-    .getElementById("create-paisDestino")
+    .getElementById('create-paisDestino')
     ?.value.trim();
 
   if (
@@ -797,103 +820,116 @@ function crearRuta() {
     !destino ||
     !paisDestino
   ) {
-    mostrarToast("Por favor complete todos los campos obligatorios", "error");
+    mostrarToast('Por favor complete todos los campos obligatorios', 'error');
     return;
   }
-
-  const nuevaRuta = {
-    id: Date.now(),
-    idRuta: idRuta,
-    nombre: nombre,
-    origen: origen,
-    paisOrigen: paisOrigen,
-    destino: destino,
-    paisDestino: paisDestino,
-    distancia: document.getElementById("create-distancia")?.value.trim() || "",
-    duracion: document.getElementById("create-duracion")?.value.trim() || "",
-    tipo: document.getElementById("create-tipo")?.value || "international",
-    estado: document.getElementById("create-estado")?.value || "active",
-    viajesAnio:
-      parseInt(document.getElementById("create-viajesAnio")?.value) || 0,
-  };
-
-  rutas.push(nuevaRuta);
-  guardarRutas();
-  renderizarRutas();
-  ocultarModal();
-  mostrarToast("¡Ruta creada con éxito!");
-}
-
-function editarRuta() {
-  const id = parseInt(document.getElementById("edit-id")?.value);
-  const rutaIndex = rutas.findIndex((r) => r.id === id);
-
-  if (rutaIndex !== -1) {
-    rutas[rutaIndex] = {
-      ...rutas[rutaIndex],
-      idRuta: document.getElementById("edit-idRuta")?.value.trim() || "",
-      nombre: document.getElementById("edit-nombre")?.value.trim() || "",
-      origen: document.getElementById("edit-origen")?.value.trim() || "",
-      paisOrigen:
-        document.getElementById("edit-paisOrigen")?.value.trim() || "",
-      destino: document.getElementById("edit-destino")?.value.trim() || "",
-      paisDestino:
-        document.getElementById("edit-paisDestino")?.value.trim() || "",
-      distancia: document.getElementById("edit-distancia")?.value.trim() || "",
-      duracion: document.getElementById("edit-duracion")?.value.trim() || "",
-      tipo: document.getElementById("edit-tipo")?.value || "international",
-      estado: document.getElementById("edit-estado")?.value || "active",
+  try {
+    const payload = {
+      idRuta: idRuta,
+      nombre: nombre,
+      origen: origen,
+      paisOrigen: paisOrigen,
+      destino: destino,
+      paisDestino: paisDestino,
+      distancia:
+        document.getElementById('create-distancia')?.value.trim() || '',
+      duracion: document.getElementById('create-duracion')?.value.trim() || '',
+      tipo: document.getElementById('create-tipo')?.value || 'international',
+      estado: document.getElementById('create-estado')?.value || 'active',
       viajesAnio:
-        parseInt(document.getElementById("edit-viajesAnio")?.value) || 0,
+        parseInt(document.getElementById('create-viajesAnio')?.value) || 0,
     };
 
-    guardarRutas();
+    const res = await api.post('/rutas', payload);
+    const created = res && res.data ? res.data : res;
+    rutas.push(mapServerRuta(created));
     renderizarRutas();
     ocultarModal();
-    mostrarToast("¡Ruta actualizada con éxito!");
+    mostrarToast('¡Ruta creada con éxito!');
+  } catch (err) {
+    console.error('Error creando ruta', err);
+    mostrarToast('Error al crear ruta', 'error');
   }
 }
 
-function eliminarRuta(id) {
-  if (confirm("¿Estás seguro de que quieres eliminar esta ruta?")) {
-    rutas = rutas.filter((r) => r.id !== id);
-    guardarRutas();
+async function editarRuta() {
+  const id = document.getElementById('edit-id')?.value;
+  try {
+    const payload = {
+      idRuta: document.getElementById('edit-idRuta')?.value.trim() || '',
+      nombre: document.getElementById('edit-nombre')?.value.trim() || '',
+      origen: document.getElementById('edit-origen')?.value.trim() || '',
+      paisOrigen:
+        document.getElementById('edit-paisOrigen')?.value.trim() || '',
+      destino: document.getElementById('edit-destino')?.value.trim() || '',
+      paisDestino:
+        document.getElementById('edit-paisDestino')?.value.trim() || '',
+      distancia: document.getElementById('edit-distancia')?.value.trim() || '',
+      duracion: document.getElementById('edit-duracion')?.value.trim() || '',
+      tipo: document.getElementById('edit-tipo')?.value || 'international',
+      estado: document.getElementById('edit-estado')?.value || 'active',
+      viajesAnio:
+        parseInt(document.getElementById('edit-viajesAnio')?.value) || 0,
+    };
+
+    const res = await api.put(`/rutas/${id}`, payload);
+    const updated = res && res.data ? res.data : res;
+    const mapped = mapServerRuta(updated);
+    rutas = rutas.map((r) => (String(r.id) === String(id) ? mapped : r));
+
     renderizarRutas();
-    mostrarToast("¡Ruta eliminada con éxito!");
+    ocultarModal();
+    mostrarToast('¡Ruta actualizada con éxito!');
+  } catch (err) {
+    console.error('Error actualizando ruta', err);
+    mostrarToast('Error al actualizar ruta', 'error');
+  }
+}
+
+async function eliminarRuta(id) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta ruta?')) return;
+  try {
+    await api.delete(`/rutas/${id}`);
+    rutas = rutas.filter((r) => String(r.id) !== String(id));
+    renderizarRutas();
+    mostrarToast('¡Ruta eliminada con éxito!');
+  } catch (err) {
+    console.error('Error eliminando ruta', err);
+    mostrarToast('Error al eliminar ruta', 'error');
   }
 }
 
 function guardarRutas() {
-  console.log("Rutas guardadas en memoria:", rutas.length, "elementos");
+  console.log('Rutas (local) actualizadas:', rutas.length, 'elementos');
 }
 
 // Funciones para toast
-function mostrarToast(mensaje, tipo = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
+  const toast = document.getElementById('toast');
   if (toast) {
-    toast.classList.add("hidden");
+    toast.classList.add('hidden');
   }
 }
