@@ -30,31 +30,15 @@ npm run dev
 npm start
 ```
 
-## Endpoints disponibles (inicio)
-
-- POST /api/auth/register
-- POST /api/auth/login
-- GET /api/auth/me
-- POST /api/auth/refresh-token
-- POST /api/auth/logout
-
-- CRUD Tareas
-  - POST /api/tareas
-  - GET /api/tareas
-  - GET /api/tareas/:id
-  - PUT /api/tareas/:id
-  - PATCH /api/tareas/:id
-  - DELETE /api/tareas/:id
-  - GET /api/tareas/estadisticas
-
-## Integración con frontend
-
-- Base API: http://localhost:3000/api
-- Autenticación: enviar header `Authorization: Bearer <token>` en requests protegidos
-
 ## Próximos pasos
 
-- Implementar modelos restantes (Embarques, Rutas, Facturas, Personal, Embarcaciones, Almacenes)
 - Implementar servicios de estadísticas y exportación
 - Añadir validaciones y sanitización adicionales
 - Documentación completa de la API
+- Implementar servicios de Autentificacion de usuarios:
+
+  - POST /api/auth/register
+  - POST /api/auth/login
+  - GET /api/auth/me
+  - POST /api/auth/refresh-token
+  - POST /api/auth/logout
