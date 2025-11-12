@@ -1,17 +1,32 @@
+import ApiService from '../../assets/JS/utils/apiService.js';
+
+const api = new ApiService();
 let tiposReporte = obtenerTiposReporteEjemplo();
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
-function inicializarModulo() {
-  console.log("Inicializando módulo...");
-  // Mover el contenido de inicializar aquí
-
-  renderizarExportarDatos();
+async function inicializarModulo() {
+  console.log('Inicializando módulo...');
   configurarEventos();
+  await cargarTiposReporte();
+  renderizarExportarDatos();
+}
+
+async function cargarTiposReporte() {
+  try {
+    const res = await api.get('/export/tipos');
+    const payload = res && res.data ? res.data : res;
+    if (Array.isArray(payload) && payload.length > 0) tiposReporte = payload;
+  } catch (err) {
+    console.warn(
+      'No se pudieron cargar tipos de reporte desde la API, usando ejemplos locales',
+      err,
+    );
+  }
 }
 
 // Auto-inicialización cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", inicializarModulo);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarModulo);
 } else {
   // Si el DOM ya está listo, ejecutar inmediatamente
   inicializarModulo();
@@ -20,54 +35,54 @@ if (document.readyState === "loading") {
 function obtenerTiposReporteEjemplo() {
   return [
     {
-      id: "tareas",
-      nombre: "Reporte de Tareas",
-      descripcion: "Incluye todas las tareas, estados y asignaciones.",
-      icono: "tasks",
-      color: "blue",
+      id: 'tareas',
+      nombre: 'Reporte de Tareas',
+      descripcion: 'Incluye todas las tareas, estados y asignaciones.',
+      icono: 'tasks',
+      color: 'blue',
     },
     {
-      id: "embarques",
-      nombre: "Reporte de Embarques",
-      descripcion: "Detalles de todos los embarques y su estado actual.",
-      icono: "ship",
-      color: "green",
+      id: 'embarques',
+      nombre: 'Reporte de Embarques',
+      descripcion: 'Detalles de todos los embarques y su estado actual.',
+      icono: 'ship',
+      color: 'green',
     },
     {
-      id: "facturacion",
-      nombre: "Reporte de Facturación",
-      descripcion: "Registro de facturas emitidas y estado de pago.",
-      icono: "file-invoice-dollar",
-      color: "purple",
+      id: 'facturacion',
+      nombre: 'Reporte de Facturación',
+      descripcion: 'Registro de facturas emitidas y estado de pago.',
+      icono: 'file-invoice-dollar',
+      color: 'purple',
     },
     {
-      id: "personal",
-      nombre: "Reporte de Personal",
-      descripcion: "Información detallada sobre el personal.",
-      icono: "users",
-      color: "orange",
+      id: 'personal',
+      nombre: 'Reporte de Personal',
+      descripcion: 'Información detallada sobre el personal.',
+      icono: 'users',
+      color: 'orange',
     },
     {
-      id: "estadisticas",
-      nombre: "Reporte de Estadísticas",
-      descripcion: "Métricas y análisis de rendimiento.",
-      icono: "chart-bar",
-      color: "red",
+      id: 'estadisticas',
+      nombre: 'Reporte de Estadísticas',
+      descripcion: 'Métricas y análisis de rendimiento.',
+      icono: 'chart-bar',
+      color: 'red',
     },
     {
-      id: "inventario",
-      nombre: "Reporte de Inventario",
-      descripcion: "Estado actual del inventario y stock.",
-      icono: "box",
-      color: "yellow",
+      id: 'inventario',
+      nombre: 'Reporte de Inventario',
+      descripcion: 'Estado actual del inventario y stock.',
+      icono: 'box',
+      color: 'yellow',
     },
   ];
 }
 
 function renderizarExportarDatos() {
-  const moduleContent = document.getElementById("module-content");
+  const moduleContent = document.getElementById('module-content');
   if (!moduleContent) {
-    console.error("No se encontró el module-content");
+    console.error('No se encontró el module-content');
     return;
   }
   moduleContent.innerHTML = crearEstructuraCompleta();
@@ -112,7 +127,7 @@ function crearEstructuraCompleta() {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6" id="grid-reportes">
                 ${tiposReporte
                   .map((reporte) => crearTarjetaReporte(reporte))
-                  .join("")}
+                  .join('')}
             </div>
 
             <!-- Panel avanzado -->
@@ -139,19 +154,19 @@ function crearEstructuraCompleta() {
                         <h3 class="font-medium text-gray-700 mb-3">Configuración de Exportación</h3>
                         <div class="space-y-3">
                             ${crearToggle(
-                              "Incluir metadatos",
-                              "toggle-metadatos",
-                              true
+                              'Incluir metadatos',
+                              'toggle-metadatos',
+                              true,
                             )}
                             ${crearToggle(
-                              "Comprimir archivo",
-                              "toggle-comprimir",
-                              false
+                              'Comprimir archivo',
+                              'toggle-comprimir',
+                              false,
                             )}
                             ${crearToggle(
-                              "Incluir imágenes",
-                              "toggle-imagenes",
-                              false
+                              'Incluir imágenes',
+                              'toggle-imagenes',
+                              false,
                             )}
                             <button class="w-full bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2" id="btn-aplicar-config">
                                 <i class="fas fa-cog"></i> Aplicar Configuración
@@ -197,7 +212,7 @@ function crearToggle(label, id, checked) {
             <span class="text-sm text-gray-700">${label}</span>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" class="sr-only peer" id="${id}" ${
-    checked ? "checked" : ""
+    checked ? 'checked' : ''
   }>
                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
             </label>
@@ -229,32 +244,32 @@ function crearTarjetaReporte(reporte) {
 function crearHistorialExportaciones() {
   const historial = [
     {
-      archivo: "reporte_tareas_2024-01.csv",
-      tipo: "Tareas",
-      fecha: "Hoy, 10:30",
-      tamaño: "2.4 MB",
-      estado: "completado",
+      archivo: 'reporte_tareas_2024-01.csv',
+      tipo: 'Tareas',
+      fecha: 'Hoy, 10:30',
+      tamaño: '2.4 MB',
+      estado: 'completado',
     },
     {
-      archivo: "embarques_enero.pdf",
-      tipo: "Embarques",
-      fecha: "Ayer, 15:45",
-      tamaño: "1.8 MB",
-      estado: "completado",
+      archivo: 'embarques_enero.pdf',
+      tipo: 'Embarques',
+      fecha: 'Ayer, 15:45',
+      tamaño: '1.8 MB',
+      estado: 'completado',
     },
     {
-      archivo: "facturacion_q4.xlsx",
-      tipo: "Facturación",
-      fecha: "05/01/2024",
-      tamaño: "3.1 MB",
-      estado: "completado",
+      archivo: 'facturacion_q4.xlsx',
+      tipo: 'Facturación',
+      fecha: '05/01/2024',
+      tamaño: '3.1 MB',
+      estado: 'completado',
     },
     {
-      archivo: "personal_diciembre.csv",
-      tipo: "Personal",
-      fecha: "02/01/2024",
-      tamaño: "1.2 MB",
-      estado: "error",
+      archivo: 'personal_diciembre.csv',
+      tipo: 'Personal',
+      fecha: '02/01/2024',
+      tamaño: '1.2 MB',
+      estado: 'error',
     },
   ];
 
@@ -278,11 +293,11 @@ function crearHistorialExportaciones() {
                 }</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      item.estado === "completado"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                      item.estado === 'completado'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
                     }">
-                        ${item.estado === "completado" ? "Completado" : "Error"}
+                        ${item.estado === 'completado' ? 'Completado' : 'Error'}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -298,18 +313,18 @@ function crearHistorialExportaciones() {
                     </button>
                 </td>
             </tr>
-        `
+        `,
     )
-    .join("");
+    .join('');
 }
 
 function configurarEventos() {
-  console.log("Configurando eventos del módulo de exportación...");
+  console.log('Configurando eventos del módulo de exportación...');
 
   // Eventos para las tarjetas de reporte
-  document.addEventListener("click", function (e) {
-    const card = e.target.closest(".reporte-card");
-    const exportarBtn = e.target.closest(".exportar-btn");
+  document.addEventListener('click', function (e) {
+    const card = e.target.closest('.reporte-card');
+    const exportarBtn = e.target.closest('.exportar-btn');
 
     if (card) {
       const tipoReporte = card.dataset.reporte;
@@ -323,30 +338,30 @@ function configurarEventos() {
   });
 
   // Eventos para botones de acción
-  document.addEventListener("click", function (e) {
-    if (e.target.closest("#btn-exportar-multiple")) {
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#btn-exportar-multiple')) {
       exportarMultiple();
     }
 
-    if (e.target.closest("#btn-programar-exportacion")) {
+    if (e.target.closest('#btn-programar-exportacion')) {
       mostrarModalProgramacion();
     }
 
-    if (e.target.closest("#btn-aplicar-config")) {
+    if (e.target.closest('#btn-aplicar-config')) {
       aplicarConfiguracion();
     }
 
-    if (e.target.closest("#btn-actualizar-historial")) {
+    if (e.target.closest('#btn-actualizar-historial')) {
       actualizarHistorial();
     }
 
-    const descargarBtn = e.target.closest(".descargar-btn");
+    const descargarBtn = e.target.closest('.descargar-btn');
     if (descargarBtn) {
       const archivo = descargarBtn.dataset.archivo;
       descargarArchivo(archivo);
     }
 
-    const eliminarBtn = e.target.closest(".eliminar-btn");
+    const eliminarBtn = e.target.closest('.eliminar-btn');
     if (eliminarBtn) {
       const archivo = eliminarBtn.dataset.archivo;
       eliminarArchivo(archivo);
@@ -354,17 +369,17 @@ function configurarEventos() {
   });
 
   // Evento para cambio de formato
-  const formatoSelect = document.getElementById("formato-exportacion");
+  const formatoSelect = document.getElementById('formato-exportacion');
   if (formatoSelect) {
-    formatoSelect.addEventListener("change", function (e) {
+    formatoSelect.addEventListener('change', function (e) {
       actualizarFormatosTarjetas(e.target.value);
     });
   }
 
   // Evento para búsqueda
-  const buscarInput = document.getElementById("buscar-reporte");
+  const buscarInput = document.getElementById('buscar-reporte');
   if (buscarInput) {
-    buscarInput.addEventListener("input", function (e) {
+    buscarInput.addEventListener('input', function (e) {
       filtrarReportes(e.target.value);
     });
   }
@@ -372,11 +387,11 @@ function configurarEventos() {
 
 function generarReporte(tipoReporte) {
   const formato =
-    document.getElementById("formato-exportacion")?.value || "csv";
+    document.getElementById('formato-exportacion')?.value || 'csv';
   const reporte = tiposReporte.find((r) => r.id === tipoReporte);
 
   if (!reporte) {
-    mostrarToast("Tipo de reporte no encontrado", "error");
+    mostrarToast('Tipo de reporte no encontrado', 'error');
     return;
   }
 
@@ -384,38 +399,66 @@ function generarReporte(tipoReporte) {
     `Generando reporte de ${
       reporte.nombre
     } en formato ${formato.toUpperCase()}...`,
-    "info"
+    'info',
   );
-
-  setTimeout(() => {
+  // Intentar generar en backend; si falla, usar fallback local
+  (async () => {
     try {
-      const datos = obtenerDatosParaReporte(tipoReporte);
+      const filtros = {
+        fechaDesde: document.getElementById('filtro-fecha-desde')?.value,
+        fechaHasta: document.getElementById('filtro-fecha-hasta')?.value,
+        estado: document.getElementById('filtro-estado')?.value,
+      };
 
-      switch (formato) {
-        case "csv":
-          descargarCSV(datos, `reporte_${tipoReporte}`);
-          break;
-        case "excel":
-          exportarExcel(datos, `reporte_${tipoReporte}`);
-          break;
-        case "pdf":
-          exportarPDF(datos, `reporte_${tipoReporte}`);
-          break;
-        case "json":
-          exportarJSON(datos, `reporte_${tipoReporte}`);
-          break;
+      const res = await api.post('/export', {
+        tipo: tipoReporte,
+        formato,
+        filtros,
+      });
+      const payload = res && res.data ? res.data : res;
+      if (payload && payload.url) {
+        // Descarga proporcionada por servidor
+        window.location = payload.url;
+        agregarAlHistorial(tipoReporte, formato);
+        mostrarToast(
+          `Reporte de ${reporte.nombre} generado exitosamente`,
+          'success',
+        );
+        return;
       }
-
-      agregarAlHistorial(tipoReporte, formato);
-      mostrarToast(
-        `Reporte de ${reporte.nombre} generado exitosamente`,
-        "success"
-      );
-    } catch (error) {
-      console.error("Error generando reporte:", error);
-      mostrarToast("Error al generar el reporte", "error");
+      // Si el servidor no devuelve URL, caer al fallback
+      throw new Error('No download URL from server');
+    } catch (err) {
+      console.warn('Falling back to client-side export:', err);
+      setTimeout(() => {
+        try {
+          const datos = obtenerDatosParaReporte(tipoReporte);
+          switch (formato) {
+            case 'csv':
+              descargarCSV(datos, `reporte_${tipoReporte}`);
+              break;
+            case 'excel':
+              exportarExcel(datos, `reporte_${tipoReporte}`);
+              break;
+            case 'pdf':
+              exportarPDF(datos, `reporte_${tipoReporte}`);
+              break;
+            case 'json':
+              exportarJSON(datos, `reporte_${tipoReporte}`);
+              break;
+          }
+          agregarAlHistorial(tipoReporte, formato);
+          mostrarToast(
+            `Reporte de ${reporte.nombre} generado exitosamente`,
+            'success',
+          );
+        } catch (error) {
+          console.error('Error generando reporte (fallback):', error);
+          mostrarToast('Error al generar el reporte', 'error');
+        }
+      }, 800);
     }
-  }, 1500);
+  })();
 }
 
 function obtenerDatosParaReporte(tipoReporte) {
@@ -424,68 +467,68 @@ function obtenerDatosParaReporte(tipoReporte) {
     tareas: [
       {
         id: 1,
-        tarea: "Revisar documentación",
-        estado: "Completada",
-        asignado: "Juan Pérez",
-        fecha: "2024-01-15",
+        tarea: 'Revisar documentación',
+        estado: 'Completada',
+        asignado: 'Juan Pérez',
+        fecha: '2024-01-15',
       },
       {
         id: 2,
-        tarea: "Preparar embarque",
-        estado: "En progreso",
-        asignado: "María García",
-        fecha: "2024-01-16",
+        tarea: 'Preparar embarque',
+        estado: 'En progreso',
+        asignado: 'María García',
+        fecha: '2024-01-16',
       },
     ],
     embarques: [
       {
-        id: "BV-2025-0382",
-        buque: "Pacific Star",
-        origen: "Shanghái",
-        destino: "Buenaventura",
-        estado: "En tránsito",
+        id: 'BV-2025-0382',
+        buque: 'Pacific Star',
+        origen: 'Shanghái',
+        destino: 'Buenaventura',
+        estado: 'En tránsito',
       },
     ],
     facturacion: [
       {
-        id: "FAC-001",
-        cliente: "Empresa ABC",
+        id: 'FAC-001',
+        cliente: 'Empresa ABC',
         monto: 15000,
-        estado: "Pagada",
-        fecha: "2024-01-10",
+        estado: 'Pagada',
+        fecha: '2024-01-10',
       },
     ],
     personal: [
       {
-        nombre: "Ana López",
-        departamento: "Logística",
-        puesto: "Coordinador",
-        estado: "Activo",
+        nombre: 'Ana López',
+        departamento: 'Logística',
+        puesto: 'Coordinador',
+        estado: 'Activo',
       },
     ],
     estadisticas: [
       {
-        metric: "Embarques Totales",
+        metric: 'Embarques Totales',
         valor: 158,
-        tendencia: "+12%",
+        tendencia: '+12%',
       },
     ],
     inventario: [
       {
-        producto: "Contenedor 20ft",
+        producto: 'Contenedor 20ft',
         cantidad: 45,
-        ubicacion: "Almacén A",
-        estado: "Disponible",
+        ubicacion: 'Almacén A',
+        estado: 'Disponible',
       },
     ],
   };
 
-  return datosEjemplo[tipoReporte] || [{ mensaje: "No hay datos disponibles" }];
+  return datosEjemplo[tipoReporte] || [{ mensaje: 'No hay datos disponibles' }];
 }
 
 function descargarCSV(datos, nombreArchivo) {
   if (!datos || datos.length === 0) {
-    mostrarToast("No hay datos para exportar", "error");
+    mostrarToast('No hay datos para exportar', 'error');
     return;
   }
 
@@ -494,25 +537,25 @@ function descargarCSV(datos, nombreArchivo) {
     cabeceras
       .map((header) => {
         const valor = fila[header];
-        return typeof valor === "string" && valor.includes(",")
+        return typeof valor === 'string' && valor.includes(',')
           ? `"${valor}"`
           : valor;
       })
-      .join(",")
+      .join(','),
   );
 
-  const csvContent = [cabeceras.join(","), ...filasCSV].join("\n");
-  descargarArchivoGenerico(csvContent, `${nombreArchivo}.csv`, "text/csv");
+  const csvContent = [cabeceras.join(','), ...filasCSV].join('\n');
+  descargarArchivoGenerico(csvContent, `${nombreArchivo}.csv`, 'text/csv');
 }
 
 function exportarExcel(datos, nombreArchivo) {
-  mostrarToast(`Exportando ${nombreArchivo} a Excel...`, "info");
+  mostrarToast(`Exportando ${nombreArchivo} a Excel...`, 'info');
   // En una implementación real, aquí usarías una librería como SheetJS
   descargarCSV(datos, nombreArchivo); // Fallback a CSV por ahora
 }
 
 function exportarPDF(datos, nombreArchivo) {
-  mostrarToast(`Exportando ${nombreArchivo} a PDF...`, "info");
+  mostrarToast(`Exportando ${nombreArchivo} a PDF...`, 'info');
   // En una implementación real, aquí usarías una librería como jsPDF
   exportarJSON(datos, nombreArchivo); // Fallback a JSON por ahora
 }
@@ -522,18 +565,18 @@ function exportarJSON(datos, nombreArchivo) {
   descargarArchivoGenerico(
     jsonContent,
     `${nombreArchivo}.json`,
-    "application/json"
+    'application/json',
   );
 }
 
 function descargarArchivoGenerico(contenido, nombreArchivo, tipoMime) {
   const blob = new Blob([contenido], { type: `${tipoMime};charset=utf-8;` });
-  const enlace = document.createElement("a");
+  const enlace = document.createElement('a');
   const url = URL.createObjectURL(blob);
 
-  enlace.setAttribute("href", url);
-  enlace.setAttribute("download", nombreArchivo);
-  enlace.style.visibility = "hidden";
+  enlace.setAttribute('href', url);
+  enlace.setAttribute('download', nombreArchivo);
+  enlace.style.visibility = 'hidden';
 
   document.body.appendChild(enlace);
   enlace.click();
@@ -542,113 +585,113 @@ function descargarArchivoGenerico(contenido, nombreArchivo, tipoMime) {
 }
 
 function actualizarFormatosTarjetas(formato) {
-  document.querySelectorAll(".formato-badge").forEach((span) => {
+  document.querySelectorAll('.formato-badge').forEach((span) => {
     span.textContent = formato.toUpperCase();
   });
 }
 
 function filtrarReportes(termino) {
-  const grid = document.getElementById("grid-reportes");
+  const grid = document.getElementById('grid-reportes');
   if (!grid) return;
 
-  const tarjetas = grid.querySelectorAll(".reporte-card");
+  const tarjetas = grid.querySelectorAll('.reporte-card');
   const terminoLower = termino.toLowerCase();
 
   tarjetas.forEach((tarjeta) => {
-    const nombre = tarjeta.querySelector("h3").textContent.toLowerCase();
-    const descripcion = tarjeta.querySelector("p").textContent.toLowerCase();
+    const nombre = tarjeta.querySelector('h3').textContent.toLowerCase();
+    const descripcion = tarjeta.querySelector('p').textContent.toLowerCase();
 
     if (nombre.includes(terminoLower) || descripcion.includes(terminoLower)) {
-      tarjeta.style.display = "block";
+      tarjeta.style.display = 'block';
     } else {
-      tarjeta.style.display = "none";
+      tarjeta.style.display = 'none';
     }
   });
 }
 
 function exportarMultiple() {
-  mostrarToast("Preparando exportación múltiple...", "info");
+  mostrarToast('Preparando exportación múltiple...', 'info');
   // Lógica para exportación múltiple
 }
 
 function mostrarModalProgramacion() {
-  mostrarToast("Abriendo programador de exportaciones...", "info");
+  mostrarToast('Abriendo programador de exportaciones...', 'info');
   // Lógica para modal de programación
 }
 
 function aplicarConfiguracion() {
-  const metadatos = document.getElementById("toggle-metadatos").checked;
-  const comprimir = document.getElementById("toggle-comprimir").checked;
-  const imagenes = document.getElementById("toggle-imagenes").checked;
+  const metadatos = document.getElementById('toggle-metadatos').checked;
+  const comprimir = document.getElementById('toggle-comprimir').checked;
+  const imagenes = document.getElementById('toggle-imagenes').checked;
 
   mostrarToast(
-    `Configuración aplicada: Metadatos ${metadatos ? "ON" : "OFF"}, Comprimir ${
-      comprimir ? "ON" : "OFF"
-    }, Imágenes ${imagenes ? "ON" : "OFF"}`,
-    "success"
+    `Configuración aplicada: Metadatos ${metadatos ? 'ON' : 'OFF'}, Comprimir ${
+      comprimir ? 'ON' : 'OFF'
+    }, Imágenes ${imagenes ? 'ON' : 'OFF'}`,
+    'success',
   );
 }
 
 function actualizarHistorial() {
-  mostrarToast("Actualizando historial...", "info");
+  mostrarToast('Actualizando historial...', 'info');
   // Lógica para actualizar historial
 }
 
 function agregarAlHistorial(tipoReporte, formato) {
   console.log(
-    `Reporte ${tipoReporte} en formato ${formato} agregado al historial`
+    `Reporte ${tipoReporte} en formato ${formato} agregado al historial`,
   );
 }
 
 function descargarArchivo(archivo) {
-  mostrarToast(`Descargando ${archivo}...`, "info");
+  mostrarToast(`Descargando ${archivo}...`, 'info');
 }
 
 function eliminarArchivo(archivo) {
   if (confirm(`¿Estás seguro de que quieres eliminar ${archivo}?`)) {
-    mostrarToast(`Archivo ${archivo} eliminado`, "success");
+    mostrarToast(`Archivo ${archivo} eliminado`, 'success');
   }
 }
 
 // Funciones para toast
-function mostrarToast(mensaje, tipo = "info") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toast-message");
+function mostrarToast(mensaje, tipo = 'info') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
 
   if (!toast || !toastMessage) return;
 
   toastMessage.textContent = mensaje;
 
   // Configurar el color según el tipo
-  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
-  if (tipo === "success") {
-    toast.classList.add("bg-green-500", "text-white");
-  } else if (tipo === "error") {
-    toast.classList.add("bg-red-500", "text-white");
-  } else if (tipo === "info") {
-    toast.classList.add("bg-blue-500", "text-white");
+  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
+  if (tipo === 'success') {
+    toast.classList.add('bg-green-500', 'text-white');
+  } else if (tipo === 'error') {
+    toast.classList.add('bg-red-500', 'text-white');
+  } else if (tipo === 'info') {
+    toast.classList.add('bg-blue-500', 'text-white');
   } else {
-    toast.classList.add("bg-gray-500", "text-white");
+    toast.classList.add('bg-gray-500', 'text-white');
   }
 
   // Mostrar el toast
-  toast.classList.remove("hidden");
+  toast.classList.remove('hidden');
 
   // Ocultar automáticamente después de 3 segundos
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById("toast");
+  const toast = document.getElementById('toast');
   if (toast) {
-    toast.classList.add("hidden");
+    toast.classList.add('hidden');
   }
 }
 
 // Configurar evento para cerrar toast
-document.addEventListener("DOMContentLoaded", function () {
-  const toastClose = document.getElementById("toast-close");
+document.addEventListener('DOMContentLoaded', function () {
+  const toastClose = document.getElementById('toast-close');
   if (toastClose) {
-    toastClose.addEventListener("click", ocultarToast);
+    toastClose.addEventListener('click', ocultarToast);
   }
 });
