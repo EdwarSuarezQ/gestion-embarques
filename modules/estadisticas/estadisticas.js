@@ -1,78 +1,164 @@
-import ApiService from '../../assets/JS/utils/apiService.js';
+import ApiService from "../../assets/JS/utils/apiService.js";
 
 const api = new ApiService();
-let metricas = obtenerMetricasReales();
+let metricas = {
+  embarquesTotales: 0,
+  teusMovilizados: 0,
+  embarquesCompletados: 0,
+  embarquesTransito: 0,
+  embarquesPendientes: 0,
+  embarquesRetraso: 0,
+  incidentes: 0,
+  tareasPendientes: 0,
+  tareasCompletadas: 0,
+  personalActivo: 0,
+  personalTotal: 0,
+  tiempoPromedio: "0 días",
+  variacionMensual: "+0%",
+};
 
 // Función de inicialización que se ejecutará cuando el módulo se cargue
 async function inicializarModulo() {
-  console.log('Inicializando módulo...');
+  console.log("Inicializando módulo de estadísticas...");
+
+  // Debug temporal para ver la estructura de la respuesta
+  await debugEstructuraRespuesta();
+
   configurarEventos();
-  await cargarMetricas();
+  await cargarDatosReales();
   renderizarEstadisticas();
 }
 
-async function cargarMetricas() {
+// Función temporal para debug
+async function debugEstructuraRespuesta() {
   try {
-    const res = await api.get('/estadisticas');
-    const payload = res && res.data ? res.data : res;
-    if (payload) metricas = payload;
-  } catch (err) {
-    console.warn(
-      'No se pudo cargar métricas desde API, usando simuladas:',
-      err,
-    );
-    metricas = obtenerMetricasReales();
+    const response = await api.get("/estadisticas");
+    console.log("🔍 DEBUG - Estructura de respuesta:", {
+      response,
+      tieneData: !!response.data,
+      keys: Object.keys(response),
+      tipo: typeof response,
+    });
+
+    if (response.data) {
+      console.log("🔍 DEBUG - response.data:", response.data);
+      console.log("🔍 DEBUG - keys de data:", Object.keys(response.data));
+    }
+  } catch (error) {
+    console.error("❌ Error en debug:", error);
   }
 }
 
-// Auto-inicialización cuando el DOM esté listo
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', inicializarModulo);
-} else {
-  // Si el DOM ya está listo, ejecutar inmediatamente
-  inicializarModulo();
+async function calcularEmbarquesRetraso() {
+  try {
+    // Obtener todos los embarques para calcular retrasos
+    const response = await api.get("/embarques");
+    const embarquesData = response?.data || response;
+    const embarques = Array.isArray(embarquesData)
+      ? embarquesData
+      : embarquesData.items || [];
+
+    let retrasados = 0;
+    const ahora = new Date();
+
+    embarques.forEach((embarque) => {
+      if (embarque.estado !== "completed") {
+        // Convertir fechaEstimada "dd/mm/yyyy - HH:mm" a Date
+        const [fechaPart, horaPart] = embarque.fechaEstimada.split(" - ");
+        const [dia, mes, anio] = fechaPart.split("/");
+        const fechaEstimada = new Date(`${anio}-${mes}-${dia}T${horaPart}`);
+
+        // Si pasó la fecha estimada, está en retraso
+        if (fechaEstimada < ahora) {
+          retrasados++;
+        }
+      }
+    });
+
+    return retrasados;
+  } catch (error) {
+    console.error("Error calculando retrasos:", error);
+    return 0;
+  }
 }
 
-function obtenerMetricasReales() {
-  const embarques = [];
-  const tareas = [];
-  const personal = [];
+async function cargarDatosReales() {
+  try {
+    console.log("Cargando datos reales desde APIs...");
 
+    const response = await api.get("/estadisticas");
+    console.log("📦 Respuesta completa:", response);
+
+    const metricasData = response?.data || response;
+
+    console.log("📊 Datos procesados:", metricasData);
+
+    if (metricasData) {
+      // Actualizar métricas del backend
+      metricas.embarquesTotales = Number(metricasData.embarquesTotales) || 0;
+      metricas.teusMovilizados = Number(metricasData.teusMovilizados) || 0;
+      metricas.embarquesCompletados =
+        Number(metricasData.embarquesCompletados) || 0;
+      metricas.embarquesTransito = Number(metricasData.embarquesTransito) || 0;
+      metricas.embarquesPendientes =
+        Number(metricasData.embarquesPendientes) || 0;
+
+      // CALCULAR RETRASOS SI NO VIENEN DEL BACKEND
+      if (metricasData.embarquesRetraso !== undefined) {
+        metricas.embarquesRetraso = Number(metricasData.embarquesRetraso);
+      } else {
+        // Calcular en frontend si el backend no lo proporciona
+        metricas.embarquesRetraso = await calcularEmbarquesRetraso();
+      }
+
+      metricas.incidentes = Number(metricasData.incidentes) || 0;
+      metricas.tareasPendientes = Number(metricasData.tareasPendientes) || 0;
+      metricas.tareasCompletadas = Number(metricasData.tareasCompletadas) || 0;
+      metricas.personalActivo = Number(metricasData.personalActivo) || 0;
+      metricas.personalTotal = Number(metricasData.personalTotal) || 0;
+      metricas.tiempoPromedio = metricasData.tiempoPromedio || "0 días";
+      metricas.variacionMensual = metricasData.variacionMensual || "+0%";
+    } else {
+      console.warn("⚠️ No se recibieron datos válidos del backend");
+    }
+
+    console.log("✅ Métricas finales - En retraso:", metricas.embarquesRetraso);
+    console.log("✅ Todas las métricas:", metricas);
+  } catch (err) {
+    console.error("❌ Error cargando datos reales:", err);
+    mostrarToast("Error al cargar datos del servidor", "error");
+  }
+}
+
+function obtenerMetricasEjemplo() {
+  // Datos de ejemplo para cuando no hay conexión o hay errores
   return {
-    embarquesTotales: embarques.length,
-    teusMovilizados: embarques.reduce((acc, e) => acc + (e.teus || 0), 0),
-    embarquesCompletados: embarques.filter((e) => e.estado === 'completado')
-      .length,
-    embarquesTransito: embarques.filter((e) => e.estado === 'transito').length,
-    embarquesPendientes: embarques.filter((e) => e.estado === 'pendiente')
-      .length,
-    incidentes: embarques.filter((e) => e.incidente).length,
-
-    // ejemplos adicionales
-    tareasPendientes: tareas.filter((t) => t.estado === 'pendiente').length,
-    tareasCompletadas: tareas.filter((t) => t.estado === 'completado').length,
-
-    personalActivo: personal.filter((p) => p.estado === 'activo').length,
-    personalTotal: personal.length,
-
-    tiempoPromedio: calcularTiempoPromedio(embarques),
-    variacionMensual: '+0%', // aquí podrías calcular real
+    embarquesTotales: 45,
+    teusMovilizados: 1280,
+    embarquesCompletados: 32,
+    embarquesTransito: 8,
+    embarquesPendientes: 5,
+    incidentes: 2,
+    tareasPendientes: 12,
+    tareasCompletadas: 28,
+    personalActivo: 15,
+    personalTotal: 18,
+    tiempoPromedio: "3.2 días",
+    variacionMensual: "+12.5%",
   };
 }
 
-function calcularTiempoPromedio(embarques) {
-  if (!embarques || embarques.length === 0) return '0 días';
-  const totalDias = embarques.reduce(
-    (acc, e) => acc + (parseFloat(e.dias) || 0),
-    0,
-  );
-  return (totalDias / embarques.length).toFixed(1) + ' días';
+// Auto-inicialización cuando el DOM esté listo
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", inicializarModulo);
+} else {
+  inicializarModulo();
 }
 
 function renderizarEstadisticas() {
-  const moduleContent = document.getElementById('module-content');
+  const moduleContent = document.getElementById("module-content");
   if (!moduleContent) {
-    console.error('No se encontró el module-content');
+    console.error("No se encontró el module-content");
     return;
   }
 
@@ -86,37 +172,37 @@ function crearEstructuraCompleta() {
             <!-- Métricas principales -->
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                 ${crearTarjetaMetrica(
-                  'Embarques Totales',
-                  'metric-embarques',
-                  'blue',
-                  'ship',
+                  "Embarques Totales",
+                  "metric-embarques",
+                  "blue",
+                  "ship",
                   metricas.embarquesTotales,
-                  metricas.variacionMensual,
+                  metricas.variacionMensual
                 )}
                 ${crearTarjetaMetrica(
-                  'TEUs Movilizados',
-                  'metric-teus',
-                  'green',
-                  'box',
+                  "TEUs Movilizados",
+                  "metric-teus",
+                  "green",
+                  "box",
                   metricas.teusMovilizados.toLocaleString(),
-                  '+8%',
+                  "+8%"
                 )}
                 ${crearTarjetaMetrica(
-                  'Tiempo Promedio',
-                  'metric-tiempo',
-                  'yellow',
-                  'clock',
+                  "Tiempo Promedio",
+                  "metric-tiempo",
+                  "yellow",
+                  "clock",
                   metricas.tiempoPromedio,
-                  '-0.3 días',
-                  'mejora mensual',
+                  "-0.3 días",
+                  "mejora mensual"
                 )}
                 ${crearTarjetaMetrica(
-                  'Eficiencia',
-                  'metric-eficiencia',
-                  'red',
-                  'chart-line',
-                  calcularEficiencia(),
-                  '+2.1%',
+                  "Eficiencia",
+                  "metric-eficiencia",
+                  "red",
+                  "chart-line",
+                  calcularEficienciaReal(),
+                  "+2.1%"
                 )}
             </div>
 
@@ -173,6 +259,34 @@ function crearEstructuraCompleta() {
                     </div>
                 </div>
             </div>
+
+            <!-- Métricas adicionales -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                ${crearTarjetaMetricaSecundaria(
+                  "Embarques en Retraso",
+                  "metric-retraso",
+                  "red",
+                  "clock",
+                  metricas.embarquesRetraso,
+                  "Por resolver"
+                )}
+                ${crearTarjetaMetricaSecundaria(
+                  "Personal Activo",
+                  "metric-personal",
+                  "purple",
+                  "users",
+                  `${metricas.personalActivo}/${metricas.personalTotal}`,
+                  "Disponible"
+                )}
+                ${crearTarjetaMetricaSecundaria(
+                  "Tasa de Incidentes",
+                  "metric-incidentes",
+                  "red",
+                  "exclamation-triangle",
+                  metricas.incidentes,
+                  "Por resolver"
+                )}
+            </div>
         </div>
     `;
 }
@@ -184,7 +298,7 @@ function crearTarjetaMetrica(
   icono,
   valor,
   tendencia,
-  textoAdicional = 'vs mes anterior',
+  textoAdicional = "vs mes anterior"
 ) {
   return `
         <div class="bg-white p-5 rounded-lg shadow-md border-l-4 border-${color}-500">
@@ -199,16 +313,16 @@ function crearTarjetaMetrica(
             </div>
             <div class="mt-2 text-sm">
                 <span class="${
-                  tendencia.includes('+') || tendencia.includes('-0.3')
-                    ? 'text-green-600'
-                    : 'text-red-600'
+                  tendencia.includes("+") || tendencia.includes("-0.3")
+                    ? "text-green-600"
+                    : "text-red-600"
                 }">
                     <i class="fas fa-${
-                      tendencia.includes('+')
-                        ? 'arrow-up'
-                        : tendencia.includes('-')
-                        ? 'arrow-down'
-                        : 'minus'
+                      tendencia.includes("+")
+                        ? "arrow-up"
+                        : tendencia.includes("-")
+                        ? "arrow-down"
+                        : "minus"
                     }"></i>
                     ${tendencia}
                 </span>
@@ -218,52 +332,167 @@ function crearTarjetaMetrica(
     `;
 }
 
+function crearTarjetaMetricaSecundaria(
+  titulo,
+  id,
+  color,
+  icono,
+  valor,
+  subtitulo
+) {
+  return `
+        <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-${color}-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">${titulo}</p>
+                    <h2 class="text-xl font-bold" id="${id}">${valor}</h2>
+                    <p class="text-xs text-gray-400 mt-1">${subtitulo}</p>
+                </div>
+                <div class="p-2 bg-${color}-100 rounded-md text-${color}-600">
+                    <i class="fas fa-${icono}"></i>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function crearDistribucionEstados() {
   const total = metricas.embarquesTotales;
+
+  // Calcular porcentajes
   const porcentajeCompletados =
     total > 0 ? Math.round((metricas.embarquesCompletados / total) * 100) : 0;
   const porcentajeTransito =
     total > 0 ? Math.round((metricas.embarquesTransito / total) * 100) : 0;
   const porcentajePendientes =
     total > 0 ? Math.round((metricas.embarquesPendientes / total) * 100) : 0;
+  const porcentajeRetraso =
+    total > 0 ? Math.round((metricas.embarquesRetraso / total) * 100) : 0;
 
   return `
-        <div>
-            <div class="flex justify-between text-sm mb-1">
-                <span class="flex items-center">
-                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                    Completados
-                </span>
-                <span>${metricas.embarquesCompletados} (${porcentajeCompletados}%)</span>
+        <div class="space-y-4">
+            <!-- Completados -->
+            <div class="estado-item" data-estado="completados">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="flex items-center cursor-pointer hover:text-green-600 transition-colors">
+                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                        Completados
+                    </span>
+                    <span class="font-medium">${metricas.embarquesCompletados} <span class="text-gray-500">(${porcentajeCompletados}%)</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-green-500 h-2 rounded-full progress-bar transition-all duration-500" 
+                         style="width: ${porcentajeCompletados}%"
+                         title="${metricas.embarquesCompletados} embarques completados"></div>
+                </div>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-green-500 h-2 rounded-full progress-bar" style="width: ${porcentajeCompletados}%"></div>
+
+            <!-- En tránsito -->
+            <div class="estado-item" data-estado="transito">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="flex items-center cursor-pointer hover:text-blue-600 transition-colors">
+                        <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                        En tránsito
+                    </span>
+                    <span class="font-medium">${metricas.embarquesTransito} <span class="text-gray-500">(${porcentajeTransito}%)</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full progress-bar transition-all duration-500" 
+                         style="width: ${porcentajeTransito}%"
+                         title="${metricas.embarquesTransito} embarques en tránsito"></div>
+                </div>
             </div>
-        </div>
-        <div>
-            <div class="flex justify-between text-sm mb-1">
-                <span class="flex items-center">
-                <span class="w-3 h-3 bg-blue-500 rounded-full mr-2">
-                </span>En tránsito</span>
-                <span>${metricas.embarquesTransito} (${porcentajeTransito}%)</span>
+
+            <!-- Pendientes -->
+            <div class="estado-item" data-estado="pendientes">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="flex items-center cursor-pointer hover:text-yellow-600 transition-colors">
+                        <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                        Pendientes
+                    </span>
+                    <span class="font-medium">${metricas.embarquesPendientes} <span class="text-gray-500">(${porcentajePendientes}%)</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-yellow-500 h-2 rounded-full progress-bar transition-all duration-500" 
+                         style="width: ${porcentajePendientes}%"
+                         title="${metricas.embarquesPendientes} embarques pendientes"></div>
+                </div>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-500 h-2 rounded-full progress-bar" style="width: ${porcentajeTransito}%"></div>
+
+            <!-- En retraso (NUEVO) -->
+            <div class="estado-item" data-estado="retraso">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="flex items-center cursor-pointer hover:text-red-600 transition-colors">
+                        <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                        En retraso
+                    </span>
+                    <span class="font-medium">${metricas.embarquesRetraso} <span class="text-gray-500">(${porcentajeRetraso}%)</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-red-500 h-2 rounded-full progress-bar transition-all duration-500" 
+                         style="width: ${porcentajeRetraso}%"
+                         title="${metricas.embarquesRetraso} embarques en retraso"></div>
+                </div>
             </div>
-        </div>
-        <div>
-            <div class="flex justify-between text-sm mb-1">
-                <span class="flex items-center">
-                    <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                    Pendientes
-                </span>
-                <span>${metricas.embarquesPendientes} (${porcentajePendientes}%)</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-yellow-500 h-2 rounded-full progress-bar" style="width: ${porcentajePendientes}%"></div>
+
+            <!-- Total -->
+            <div class="pt-3 border-t border-gray-200">
+                <div class="flex justify-between text-sm font-semibold">
+                    <span>Total de embarques:</span>
+                    <span class="text-blue-600">${total}</span>
+                </div>
             </div>
         </div>
     `;
+}
+
+// Función para actualizar solo la distribución de estados
+function actualizarDistribucionEstados() {
+  const distribucionElement = document.getElementById("distribucion-estados");
+  if (distribucionElement) {
+    distribucionElement.innerHTML = crearDistribucionEstados();
+    // Re-configurar eventos después de actualizar
+    configurarEventosDistribucion();
+  }
+}
+
+// Configurar eventos interactivos para la distribución
+function configurarEventosDistribucion() {
+  // Eventos para los items de estado
+  document.querySelectorAll(".estado-item").forEach((item) => {
+    item.addEventListener("click", function () {
+      const estado = this.getAttribute("data-estado");
+      filtrarPorEstado(estado);
+    });
+  });
+
+  // Eventos para las barras de progreso (animación)
+  const progressBars = document.querySelectorAll(".progress-bar");
+  progressBars.forEach((bar) => {
+    // Animar la barra al cargar
+    const width = bar.style.width;
+    bar.style.width = "0%";
+    setTimeout(() => {
+      bar.style.width = width;
+    }, 100);
+  });
+}
+
+// Función para filtrar por estado específico
+function filtrarPorEstado(estado) {
+  const estadosMap = {
+    completados: "completado",
+    transito: "transito",
+    pendientes: "pendiente",
+    retraso: "retraso",
+  };
+
+  const estadoFiltro = estadosMap[estado];
+
+  if (estadoFiltro) {
+    mostrarToast(`Filtrando por: ${estado}`, "info");
+    console.log(`Filtrando embarques por estado: ${estadoFiltro}`);
+  }
 }
 
 function crearIndicadoresClave() {
@@ -277,13 +506,22 @@ function crearIndicadoresClave() {
       ? ((metricas.incidentes / metricas.embarquesTotales) * 100).toFixed(1)
       : 0;
 
+  const eficienciaTareas =
+    metricas.tareasPendientes + metricas.tareasCompletadas > 0
+      ? (
+          (metricas.tareasCompletadas /
+            (metricas.tareasPendientes + metricas.tareasCompletadas)) *
+          100
+        ).toFixed(1)
+      : 0;
+
   return `
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
       <div>
         <div class="text-sm font-medium text-gray-700">Tasa de éxito</div>
         <div class="text-xs text-gray-500">Embarques sin incidentes</div>
       </div>
-      <div class="text-lg font-bold text-green-600">${calcularEficiencia()}</div>
+      <div class="text-lg font-bold text-green-600">${calcularEficienciaReal()}</div>
     </div>
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
       <div>
@@ -294,28 +532,32 @@ function crearIndicadoresClave() {
     </div>
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
       <div>
+        <div class="text-sm font-medium text-gray-700">Eficiencia tareas</div>
+        <div class="text-xs text-gray-500">Tareas completadas</div>
+      </div>
+      <div class="text-lg font-bold text-purple-600">${eficienciaTareas}%</div>
+    </div>
+    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div>
         <div class="text-sm font-medium text-gray-700">Tasa de incidentes</div>
         <div class="text-xs text-gray-500">Por cada 100 embarques</div>
       </div>
       <div class="text-lg font-bold text-red-600">${incidentesPorcentaje}%</div>
     </div>
-    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-      <div>
-        <div class="text-sm font-medium text-gray-700">Tiempo promedio</div>
-        <div class="text-xs text-gray-500">Operación completa</div>
-      </div>
-      <div class="text-lg font-bold text-yellow-600">${
-        metricas.tiempoPromedio || '0 días'
-      }</div>
-    </div>
   `;
 }
 
 function actualizarMetricasEnDOM() {
-  actualizarElemento('metric-embarques', metricas.embarquesTotales);
-  actualizarElemento('metric-teus', metricas.teusMovilizados.toLocaleString());
-  actualizarElemento('metric-tiempo', metricas.tiempoPromedio);
-  actualizarElemento('metric-eficiencia', calcularEficiencia());
+  actualizarElemento("metric-embarques", metricas.embarquesTotales);
+  actualizarElemento("metric-teus", metricas.teusMovilizados.toLocaleString());
+  actualizarElemento("metric-tiempo", metricas.tiempoPromedio);
+  actualizarElemento("metric-eficiencia", calcularEficienciaReal());
+  actualizarElemento("metric-retraso", metricas.embarquesRetraso); // NUEVO
+  actualizarElemento(
+    "metric-personal",
+    `${metricas.personalActivo}/${metricas.personalTotal}`
+  );
+  actualizarElemento("metric-incidentes", metricas.incidentes);
 }
 
 function actualizarElemento(selector, valor) {
@@ -324,188 +566,207 @@ function actualizarElemento(selector, valor) {
 }
 
 function configurarEventos() {
-  document.addEventListener('click', function (e) {
+  document.addEventListener("click", function (e) {
     if (
-      e.target.id === 'btn-actualizar' ||
-      e.target.closest('#btn-actualizar')
+      e.target.id === "btn-actualizar" ||
+      e.target.closest("#btn-actualizar")
     ) {
       actualizarDatos();
     }
-    if (e.target.id === 'btn-reporte' || e.target.closest('#btn-reporte')) {
+    if (e.target.id === "btn-reporte" || e.target.closest("#btn-reporte")) {
       generarReporte();
     }
   });
 
-  const filtroPeriodo = document.getElementById('filtro-periodo');
-  const filtroTipo = document.getElementById('filtro-tipo');
+  const filtroPeriodo = document.getElementById("filtro-periodo");
+  const filtroTipo = document.getElementById("filtro-tipo");
 
-  if (filtroPeriodo) filtroPeriodo.addEventListener('change', aplicarFiltros);
-  if (filtroTipo) filtroTipo.addEventListener('change', aplicarFiltros);
+  if (filtroPeriodo) filtroPeriodo.addEventListener("change", aplicarFiltros);
+  if (filtroTipo) filtroTipo.addEventListener("change", aplicarFiltros);
+
+  // Configurar eventos de distribución después de renderizar
+  setTimeout(() => {
+    configurarEventosDistribucion();
+  }, 100);
 }
 
-function aplicarFiltros() {
-  const periodo = document.getElementById('filtro-periodo')?.value;
-  const tipo = document.getElementById('filtro-tipo')?.value;
+async function aplicarFiltros() {
+  const periodo = document.getElementById("filtro-periodo")?.value;
+  const tipo = document.getElementById("filtro-tipo")?.value;
 
-  console.log('Aplicando filtros:', { periodo, tipo });
+  console.log("🎯 Aplicando filtros:", { periodo, tipo });
+  mostrarToast("Aplicando filtros...", "info");
 
-  // Recalcular métricas filtradas
-  simularCambioPorFiltros(periodo, tipo);
+  try {
+    let response;
 
-  // Actualizar tarjetas principales
-  actualizarMetricasEnDOM();
+    // SOLO usar el endpoint básico por ahora
+    // Los filtros avanzados requieren backend adicional
+    response = await api.get("/estadisticas");
 
-  // 🔥 Re-renderizar Distribución e Indicadores
-  const distribucion = document.getElementById('distribucion-estados');
-  if (distribucion) distribucion.innerHTML = crearDistribucionEstados();
+    console.log("📦 Respuesta completa:", response);
 
-  const indicadores = document.getElementById('indicadores-clave');
-  if (indicadores) indicadores.innerHTML = crearIndicadoresClave();
+    // ✅ CORREGIDO: Acceder a response.data si existe
+    const metricasData = response?.data || response;
 
-  mostrarToast(
-    `Filtros aplicados: ${getTextoPeriodo(periodo)} - ${getTextoTipo(tipo)}`,
-    'info',
-  );
-}
+    console.log("📊 Datos procesados del filtro:", metricasData);
 
-function simularCambioPorFiltros(periodo, tipo) {
-  // Aquí puedes aplicar lógica real.
-  // Por ahora solo afectamos un poco las métricas para ver cambios:
-  const factor = tipo === 'container' ? 1.2 : tipo === 'bulk' ? 0.8 : 1;
-  metricas.embarquesCompletados = Math.round(
-    metricas.embarquesCompletados * factor,
-  );
-  metricas.embarquesPendientes = Math.round(
-    metricas.embarquesPendientes * factor,
-  );
+    if (metricasData) {
+      // Actualizar métricas principales
+      metricas.embarquesTotales = Number(metricasData.embarquesTotales) || 0;
+      metricas.teusMovilizados = Number(metricasData.teusMovilizados) || 0;
+      metricas.embarquesCompletados =
+        Number(metricasData.embarquesCompletados) || 0;
+      metricas.embarquesTransito = Number(metricasData.embarquesTransito) || 0;
+      metricas.embarquesPendientes =
+        Number(metricasData.embarquesPendientes) || 0;
+      metricas.embarquesRetraso = Number(metricasData.embarquesRetraso) || 0; // NUEVO
+      metricas.incidentes = Number(metricasData.incidentes) || 0;
+
+      // Mantener estos valores por defecto si no vienen del backend
+      metricas.tareasPendientes = Number(metricasData.tareasPendientes) || 0;
+      metricas.tareasCompletadas = Number(metricasData.tareasCompletadas) || 0;
+      metricas.personalActivo = Number(metricasData.personalActivo) || 0;
+      metricas.personalTotal = Number(metricasData.personalTotal) || 0;
+      metricas.tiempoPromedio = metricasData.tiempoPromedio || "0 días";
+      metricas.variacionMensual = metricasData.variacionMensual || "+0%";
+    } else {
+      throw new Error("Respuesta inválida del servidor");
+    }
+
+    console.log("✅ Métricas actualizadas después de filtro:", metricas);
+
+    // Actualizar la interfaz
+    actualizarMetricasEnDOM();
+    actualizarDistribucionEstados();
+
+    const indicadores = document.getElementById("indicadores-clave");
+    if (indicadores) indicadores.innerHTML = crearIndicadoresClave();
+
+    mostrarToast(
+      `Datos actualizados: ${getTextoPeriodo(periodo)} - ${getTextoTipo(tipo)}`,
+      "success"
+    );
+  } catch (error) {
+    console.error("❌ Error aplicando filtros:", error);
+    console.error("🔍 Detalles del error:", error);
+    mostrarToast("Los filtros avanzados no están disponibles aún", "warning");
+  }
 }
 
 function getTextoPeriodo(periodo) {
   const periodos = {
-    mes: 'Este Mes',
-    trimestre: 'Este Trimestre',
-    anio: 'Este Año',
+    mes: "Este Mes",
+    trimestre: "Este Trimestre",
+    anio: "Este Año",
   };
   return periodos[periodo] || periodo;
 }
 
 function getTextoTipo(tipo) {
   const tipos = {
-    todos: 'Todos los tipos',
-    container: 'Contenedores',
-    bulk: 'Granel',
-    liquid: 'Líquidos',
+    todos: "Todos los tipos",
+    container: "Contenedores",
+    bulk: "Granel",
+    liquid: "Líquidos",
   };
   return tipos[tipo] || tipo;
 }
 
-function actualizarDatos() {
-  mostrarToast('Actualizando datos...', 'info');
-  setTimeout(() => {
-    generarNuevosDatos();
-    guardarMetricas();
+async function actualizarDatos() {
+  mostrarToast("Actualizando datos...", "info");
+  try {
+    await cargarDatosReales();
     actualizarMetricasEnDOM();
-    // También refrescamos las secciones
-    document.getElementById('distribucion-estados').innerHTML =
-      crearDistribucionEstados();
-    document.getElementById('indicadores-clave').innerHTML =
-      crearIndicadoresClave();
-    mostrarToast('Datos actualizados correctamente', 'success');
-  }, 1000);
-}
+    actualizarDistribucionEstados();
 
-function generarNuevosDatos() {
-  const cambio = Math.random() * 0.2 - 0.1;
-  metricas.embarquesTotales = Math.max(
-    1,
-    Math.round(metricas.embarquesTotales * (1 + cambio)),
-  );
-  metricas.teusMovilizados = Math.max(
-    1,
-    Math.round(metricas.teusMovilizados * (1 + cambio)),
-  );
-  metricas.incidentes = Math.max(
-    0,
-    Math.round(metricas.incidentes * (1 + cambio)),
-  );
-  metricas.embarquesCompletados = Math.round(metricas.embarquesTotales * 0.85);
-  metricas.embarquesTransito = Math.round(metricas.embarquesTotales * 0.1);
-  metricas.embarquesPendientes =
-    metricas.embarquesTotales -
-    metricas.embarquesCompletados -
-    metricas.embarquesTransito;
-  metricas.variacionMensual =
-    cambio > 0
-      ? `+${Math.round(cambio * 100)}%`
-      : `${Math.round(cambio * 100)}%`;
+    const indicadores = document.getElementById("indicadores-clave");
+    if (indicadores) indicadores.innerHTML = crearIndicadoresClave();
+
+    mostrarToast("Datos actualizados correctamente", "success");
+  } catch (error) {
+    console.error("Error actualizando datos:", error);
+    mostrarToast("Error al actualizar datos", "error");
+  }
 }
 
 function generarReporte() {
   const contenido =
     `Reporte de Estadísticas - ${new Date().toLocaleDateString()}\n\n` +
+    `=== EMBARQUES ===\n` +
     `Embarques Totales: ${metricas.embarquesTotales}\n` +
     `TEUs Movilizados: ${metricas.teusMovilizados}\n` +
-    `Tiempo Promedio: ${metricas.tiempoPromedio}\n` +
-    `Eficiencia: ${calcularEficiencia()}\n` +
-    `Incidentes: ${metricas.incidentes}\n` +
     `Completados: ${metricas.embarquesCompletados}\n` +
     `En tránsito: ${metricas.embarquesTransito}\n` +
-    `Pendientes: ${metricas.embarquesPendientes}\n\n` +
+    `Pendientes: ${metricas.embarquesPendientes}\n` +
+    `Tiempo Promedio: ${metricas.tiempoPromedio}\n\n` +
+    `=== TAREAS ===\n` +
+    `Tareas Completadas: ${metricas.tareasCompletadas}\n` +
+    `Tareas Pendientes: ${metricas.tareasPendientes}\n` +
+    `Eficiencia Tareas: ${calcularEficienciaTareas()}%\n\n` +
+    `=== PERSONAL ===\n` +
+    `Personal Total: ${metricas.personalTotal}\n` +
+    `Personal Activo: ${metricas.personalActivo}\n\n` +
+    `=== INDICADORES ===\n` +
+    `Eficiencia General: ${calcularEficienciaReal()}\n` +
+    `Incidentes: ${metricas.incidentes}\n` +
+    `Tasa de Incidentes: ${calcularTasaIncidentes()}%\n\n` +
     `Generado el: ${new Date().toLocaleString()}`;
 
-  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const enlace = document.createElement('a');
+  const enlace = document.createElement("a");
   enlace.href = url;
   enlace.download = `reporte_estadisticas_${
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0]
   }.txt`;
   enlace.click();
   URL.revokeObjectURL(url);
-  mostrarToast('Reporte generado exitosamente', 'success');
+  mostrarToast("Reporte generado exitosamente", "success");
 }
 
-function guardarMetricas() {
-  // Los datos se mantienen en la variable metricas en memoria
-  // No se usa localStorage, los datos persisten durante la sesión
-  console.log(
-    'Métricas guardadas en memoria:',
-    Object.keys(metricas).length,
-    'indicadores',
-  );
-}
-
-function calcularEficiencia() {
+function calcularEficienciaReal() {
   if (!metricas.embarquesTotales || metricas.embarquesTotales === 0)
-    return '0%';
+    return "0%";
   const eficiencia =
     ((metricas.embarquesTotales - (metricas.incidentes || 0)) /
       metricas.embarquesTotales) *
     100;
-  return eficiencia.toFixed(1) + '%';
+  return eficiencia.toFixed(1) + "%";
+}
+
+function calcularEficienciaTareas() {
+  const totalTareas = metricas.tareasPendientes + metricas.tareasCompletadas;
+  if (totalTareas === 0) return 0;
+  return ((metricas.tareasCompletadas / totalTareas) * 100).toFixed(1);
+}
+
+function calcularTasaIncidentes() {
+  if (!metricas.embarquesTotales || metricas.embarquesTotales === 0) return 0;
+  return ((metricas.incidentes / metricas.embarquesTotales) * 100).toFixed(1);
 }
 
 // Toast
-function mostrarToast(mensaje, tipo = 'info') {
-  const toast = document.getElementById('toast');
-  const toastMessage = document.getElementById('toast-message');
+function mostrarToast(mensaje, tipo = "info") {
+  const toast = document.getElementById("toast");
+  const toastMessage = document.getElementById("toast-message");
   if (!toast || !toastMessage) return;
   toastMessage.textContent = mensaje;
-  toast.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50';
-  if (tipo === 'success') toast.classList.add('bg-green-500', 'text-white');
-  else if (tipo === 'error') toast.classList.add('bg-red-500', 'text-white');
-  else if (tipo === 'info') toast.classList.add('bg-blue-500', 'text-white');
-  else toast.classList.add('bg-gray-500', 'text-white');
-  toast.classList.remove('hidden');
+  toast.className = "fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50";
+  if (tipo === "success") toast.classList.add("bg-green-500", "text-white");
+  else if (tipo === "error") toast.classList.add("bg-red-500", "text-white");
+  else if (tipo === "info") toast.classList.add("bg-blue-500", "text-white");
+  else toast.classList.add("bg-gray-500", "text-white");
+  toast.classList.remove("hidden");
   setTimeout(ocultarToast, 3000);
 }
 
 function ocultarToast() {
-  const toast = document.getElementById('toast');
-  if (toast) toast.classList.add('hidden');
+  const toast = document.getElementById("toast");
+  if (toast) toast.classList.add("hidden");
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-  const toastClose = document.getElementById('toast-close');
-  if (toastClose) toastClose.addEventListener('click', ocultarToast);
+document.addEventListener("DOMContentLoaded", function () {
+  const toastClose = document.getElementById("toast-close");
+  if (toastClose) toastClose.addEventListener("click", ocultarToast);
 });

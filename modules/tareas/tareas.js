@@ -2,12 +2,13 @@ import ApiService from "../../assets/JS/utils/apiService.js";
 
 const api = new ApiService();
 let tareas = [];
+let personal = []; // ← Nueva variable para almacenar el personal
 
 // Inicialización del módulo
 async function inicializarModulo() {
   console.log("Inicializando módulo: tareas");
   configurarEventosGlobales();
-  await cargarTareas();
+  await Promise.all([cargarTareas(), cargarPersonal()]); // ← Cargar ambos en paralelo
 }
 
 if (document.readyState === "loading") {
@@ -15,6 +16,7 @@ if (document.readyState === "loading") {
 } else {
   inicializarModulo();
 }
+
 let flatpickrInstances = []; // Para almacenar instancias de Flatpickr
 
 // Función para cargar tareas desde la API
@@ -36,6 +38,40 @@ async function cargarTareas() {
     renderizarTareas();
   } catch (error) {
     console.error("Error al cargar tareas:", error);
+  }
+}
+
+// Función para cargar personal desde la API
+async function cargarPersonal() {
+  try {
+    const res = await api.get("/personal");
+    const payload = res && res.data ? res.data : res;
+
+    if (payload && Array.isArray(payload.items)) {
+      personal = payload.items;
+    } else if (Array.isArray(payload)) {
+      personal = payload;
+    } else {
+      personal = [];
+    }
+
+    console.log("Personal cargado para tareas:", personal.length, "registros");
+  } catch (error) {
+    console.error("Error al cargar personal:", error);
+    personal = [];
+  }
+}
+
+// Función auxiliar para obtener el nombre completo del personal
+function obtenerNombreCompleto(persona) {
+  if (persona.nombre && persona.apellido) {
+    return `${persona.nombre} ${persona.apellido}`;
+  } else if (persona.nombreCompleto) {
+    return persona.nombreCompleto;
+  } else if (persona.nombre) {
+    return persona.nombre;
+  } else {
+    return "Nombre no disponible";
   }
 }
 
@@ -650,9 +686,6 @@ function mostrarModal(titulo, contenido, callbackConfirmar) {
   modalBody.innerHTML = contenido;
   modalSave.onclick = callbackConfirmar;
   modal.classList.remove("hidden");
-
-  // ELIMINAR esta línea:
-  // setTimeout(inicializarFlatpickrEnModal, 100);
 }
 
 function ocultarModal() {
@@ -663,6 +696,29 @@ function ocultarModal() {
 }
 
 function mostrarModalCrear() {
+  // Verificar si se cargó el personal
+  if (personal.length === 0) {
+    const campos = `
+      <div class="text-center py-4">
+        <p class="text-red-500">Error: No se pudo cargar la lista de personal</p>
+        <button onclick="recargarPersonal()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md">
+          Reintentar
+        </button>
+      </div>
+    `;
+    mostrarModal("Nueva Tarea", campos, () => {});
+    return;
+  }
+
+  // Generar opciones del select dinámicamente
+  const opcionesPersonal = personal
+    .filter((persona) => persona.estado === "active") // Solo personal activo
+    .map((persona) => {
+      const nombreCompleto = obtenerNombreCompleto(persona);
+      return `<option value="${nombreCompleto}">${nombreCompleto} - ${persona.puesto}</option>`;
+    })
+    .join("");
+
   const campos = `
         <div class="space-y-4">
             <div>
@@ -677,18 +733,16 @@ function mostrarModalCrear() {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Asignado a *</label>
                 <select id="create-asignado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     <option value="">Seleccionar...</option>
-                    <option value="Carlos Martínez">Carlos Martínez</option>
-                    <option value="María López">María López</option>
-                    <option value="Juan Pérez">Juan Pérez</option>
+                    ${opcionesPersonal}
                 </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fecha límite *</label>
-    <input
-        type="date"
-        id="create-fecha"
-        class="w-full px-3 py-2 border border-gray-300 rounded-md"
-        required>
+                <input
+                    type="date"
+                    id="create-fecha"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required>
                 <div class="text-xs text-gray-500 mt-1">Haz clic para seleccionar una fecha</div>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -719,6 +773,30 @@ function mostrarModalEditar(id) {
   const tarea = tareas.find((t) => t.id === id || t._id === id);
   if (!tarea) return;
 
+  // Verificar si se cargó el personal
+  if (personal.length === 0) {
+    const campos = `
+      <div class="text-center py-4">
+        <p class="text-red-500">Error: No se pudo cargar la lista de personal</p>
+        <button onclick="recargarPersonal()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md">
+          Reintentar
+        </button>
+      </div>
+    `;
+    mostrarModal("Editar Tarea", campos, () => {});
+    return;
+  }
+
+  // Generar opciones del select dinámicamente
+  const opcionesPersonal = personal
+    .filter((persona) => persona.estado === "active") // Solo personal activo
+    .map((persona) => {
+      const nombreCompleto = obtenerNombreCompleto(persona);
+      const selected = tarea.asignado === nombreCompleto ? "selected" : "";
+      return `<option value="${nombreCompleto}" ${selected}>${nombreCompleto} - ${persona.puesto}</option>`;
+    })
+    .join("");
+
   const campos = `
         <div class="space-y-4">
             <input type="hidden" id="edit-id" value="${tarea.id}">
@@ -737,15 +815,8 @@ function mostrarModalEditar(id) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Asignado a *</label>
                 <select id="edit-asignado" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                    <option value="Carlos Martínez" ${
-                      tarea.asignado === "Carlos Martínez" ? "selected" : ""
-                    }>Carlos Martínez</option>
-                    <option value="María López" ${
-                      tarea.asignado === "María López" ? "selected" : ""
-                    }>María López</option>
-                    <option value="Juan Pérez" ${
-                      tarea.asignado === "Juan Pérez" ? "selected" : ""
-                    }>Juan Pérez</option>
+                    <option value="">Seleccionar...</option>
+                    ${opcionesPersonal}
                 </select>
             </div>
             <div>
@@ -789,6 +860,20 @@ function mostrarModalEditar(id) {
     `;
 
   mostrarModal("Editar Tarea", campos, editarTarea);
+}
+
+// Función para recargar personal
+async function recargarPersonal() {
+  await cargarPersonal();
+  ocultarModal();
+  // Volver a abrir el modal según el contexto
+  const modalTitle = document.getElementById("modal-title");
+  if (modalTitle && modalTitle.textContent.includes("Nueva")) {
+    mostrarModalCrear();
+  } else if (modalTitle && modalTitle.textContent.includes("Editar")) {
+    const id = document.getElementById("edit-id")?.value;
+    if (id) mostrarModalEditar(id);
+  }
 }
 
 function crearTarea() {
@@ -903,11 +988,20 @@ function mapServerTarea(t) {
 }
 
 function asignarDepartamento(asignado) {
+  // Buscar en el personal cargado para obtener el departamento real
+  const persona = personal.find((p) => obtenerNombreCompleto(p) === asignado);
+
+  if (persona && persona.departamento) {
+    return persona.departamento;
+  }
+
+  // Fallback a mapeo estático si no se encuentra en el personal cargado
   const departamentos = {
     "Carlos Martínez": "Logística",
     "María López": "Gestión de Documentos",
     "Juan Pérez": "Mantenimiento",
   };
+
   return departamentos[asignado] || "Operaciones Portuarias";
 }
 

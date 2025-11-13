@@ -20,6 +20,8 @@ const facturasRoutes = require("./routes/facturas");
 const personalRoutes = require("./routes/personal");
 const embarcacionesRoutes = require("./routes/embarcaciones");
 const almacenesRoutes = require("./routes/almacenes");
+const estadisticasRoutes = require("./routes/estadisticas");
+const exportRoutes = require("./routes/export");
 
 const app = express();
 
@@ -45,6 +47,8 @@ app.use("/api/facturas", facturasRoutes);
 app.use("/api/personal", personalRoutes);
 app.use("/api/embarcaciones", embarcacionesRoutes);
 app.use("/api/almacenes", almacenesRoutes);
+app.use("/api/estadisticas", estadisticasRoutes);
+app.use("/api/export", exportRoutes);
 
 // Health check
 app.get("/health", (req, res) => res.json({ status: "ok" }));
